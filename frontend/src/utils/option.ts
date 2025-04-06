@@ -35,3 +35,16 @@ export function isNone<T>(option: Option<T>): option is { kind: "None" } {
 export function unwrapOr<T>(option: Option<T>, defaultValue: T): T {
   return isSome(option) ? option.value : defaultValue;
 }
+
+/**
+ * Returns the contained `Some` value or calls `defaultFn` if `None`.
+ * This is the lazy equivalent of `unwrapOr` in Rust, where the default
+ * value computation is only invoked if the `Option` is `None`.
+ *
+ * @param option - The `Option` to unwrap.
+ * @param defaultFn - A function that returns a fallback value if `option` is `None`.
+ * @returns The unwrapped value if `Some`, otherwise the value from `defaultFn`.
+ */
+export function unwrapOrElse<T>(option: Option<T>, defaultFn: () => T): T {
+  return isSome(option) ? option.value : defaultFn();
+}
