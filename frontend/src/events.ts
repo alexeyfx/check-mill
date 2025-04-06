@@ -76,6 +76,14 @@ export class TypedEvent<E> {
   public pipe = (te: TypedEvent<E>): Disposable => {
     return this.addListener((event) => te.emit(event));
   };
+
+  /**
+   * Clears every persistent and one-time listeners.
+   */
+  public clear = (): void => {
+    this.listeners.length = 0;
+    this.listenersOncer.length = 0;
+  };
 }
 
 /**
