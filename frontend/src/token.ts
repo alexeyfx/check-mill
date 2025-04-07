@@ -6,7 +6,7 @@
  * when retrieving or injecting the resource.
  */
 
-export class Token<T> {
+export class Token<_T = unknown> {
   /** A truly unique symbol (cannot collide) */
   public readonly tokenSym: symbol;
 
