@@ -16,7 +16,7 @@ export interface EventReader<E> {
    * @param listener - The callback invoked when an event occurs.
    * @returns A `Disposable` that removes the added listener when called.
    */
-  addListener(listener: Listener<E>): Disposable;
+  register(listener: Listener<E>): Disposable;
 
   /**
    * Adds a one-time listener that is automatically removed after
@@ -24,14 +24,14 @@ export interface EventReader<E> {
    *
    * @param listener - The callback invoked exactly once when an event occurs.
    */
-  addOnceListener(listener: Listener<E>): void;
+  once(listener: Listener<E>): Disposable;
 
   /**
    * Removes a previously added persistent listener.
    *
    * @param listener - The listener callback to remove.
    */
-  removeListener(listener: Listener<E>): void;
+  unregister(listener: Listener<E>): void;
 }
 
 /**
@@ -70,10 +70,10 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
    * @param listener - The listener callback to invoke when an event is emitted.
    * @returns A disposable function that, when called, removes the added listener.
    */
-  public addListener = (listener: Listener<E>): Disposable => {
+  public register = (listener: Listener<E>): Disposable => {
     this.listeners.push(listener);
 
-    return () => this.removeListener(listener);
+    return () => this.unregister(listener);
   };
 
   /**
@@ -81,8 +81,13 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
    *
    * @param listener - The listener callback to invoke once when an event is emitted.
    */
-  public addOnceListener = (listener: Listener<E>): void => {
-    this.listenersOncer.push(listener);
+  public once = (listener: Listener<E>): Disposable => {
+    const handler = (event: E) => {
+      this.unregister(handler);
+      listener(event);
+    };
+
+    return this.register(handler);
   };
 
   /**
@@ -90,11 +95,25 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
    *
    * @param listener - The listener callback to remove.
    */
-  public removeListener = (listener: Listener<E>): void => {
-    const callbackIndex = this.listeners.indexOf(listener);
-    if (callbackIndex > -1) {
-      this.listeners.splice(callbackIndex, 1);
+  public unregister = (listener: Listener<E>): void => {
+    const length = this.listeners.length;
+
+    if (length === 0) {
+      return;
     }
+
+    const callbackIndex = this.listeners.indexOf(listener);
+    if (callbackIndex === -1) {
+      return;
+    }
+
+    if (callbackIndex === length - 1) {
+      this.listeners.pop();
+      return;
+    }
+
+    this.listeners[callbackIndex] = this.listeners[length - 1];
+    this.listeners.pop();
   };
 
   /**
@@ -113,22 +132,21 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
   };
 
   /**
-   * Pipes all emitted events to another `TypedEvent` instance.
+   * Pipes all emitted events to `EventWriter` instance.
    * Essentially forwards every event from this emitter to the target emitter.
    *
-   * @param te - Another `TypedEvent` instance to pipe this emitter's events into.
+   * @param writer - `EventWriter` instance to pipe this emitter's events into.
    * @returns A disposable function that, when called, stops the piping of events.
    */
-  public pipe = (te: TypedEvent<E>): Disposable => {
-    return this.addListener((event) => te.emit(event));
+  public pipe = (writer: EventWriter<E>): Disposable => {
+    return this.register((event) => writer.emit(event));
   };
 
   /**
    * Clears every persistent and one-time listener, preventing them from being called.
    */
   public clear = (): void => {
-    this.listeners.length = 0;
-    this.listenersOncer.length = 0;
+    this.listeners = [];
   };
 }
 
@@ -169,8 +187,10 @@ export function fromEvent<
 
   target.addEventListener(type as string, handler, options);
 
-  const dispose = () =>
+  const dispose = () => {
+    typedEvent.clear();
     target.removeEventListener(type as string, handler, options);
+  };
 
   return [typedEvent, dispose];
 }
