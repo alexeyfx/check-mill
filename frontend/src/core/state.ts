@@ -3,8 +3,7 @@ import { UintXBitSet } from "./bitset";
 import { toArray, type OneOrMany } from "../utils";
 
 /**
- * A bitmask-based state manager. This class keeps an internal integer (`store`)
- * and allows setting, unsetting, toggling, and checking multiple flags.
+ * A bitmask-based state manager.
  */
 export class State {
   /** Internal bitmask representing the current state. */
@@ -13,9 +12,8 @@ export class State {
   /**
    * Optionally initialize the state with one or more flags.
    *
-   * @param initial - A single flag number or an array of flags
-   *   (bitmask values). Defaults to an empty array, meaning
-   *   no flags are set initially.
+   * @param initial - A single flag (index) or an array of flags.
+   *   Defaults to an empty array, meaning no flags are set initially.
    */
   constructor(initial?: OneOrMany<number>) {
     this.set(initial ?? []);
