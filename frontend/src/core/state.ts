@@ -1,3 +1,5 @@
+import { UintXBitSet } from "./bitset";
+
 import { toArray, type OneOrMany } from "../utils";
 
 /**
@@ -6,7 +8,7 @@ import { toArray, type OneOrMany } from "../utils";
  */
 export class State {
   /** Internal bitmask representing the current state. */
-  private store = 0;
+  private store = UintXBitSet.empty(32, 128);
 
   /**
    * Optionally initialize the state with one or more flags.
@@ -26,7 +28,7 @@ export class State {
    * @returns `true` if *every* flag in `flags` is set; otherwise `false`.
    */
   public is(flags: OneOrMany<number>): boolean {
-    return toArray(flags).every((flag) => this.store & flag);
+    return toArray(flags).every((flag) => this.store.has(flag));
   }
 
   /**
@@ -37,7 +39,7 @@ export class State {
    */
   public set(flags: OneOrMany<number>): void {
     for (const flag of toArray(flags)) {
-      this.store |= flag;
+      this.store.set(flag);
     }
   }
 
@@ -48,19 +50,19 @@ export class State {
    */
   public unset(flags: OneOrMany<number>): void {
     for (const flag of toArray(flags)) {
-      this.store &= ~flag;
+      this.store.unset(flag);
     }
   }
 
   /**
-   * Toggles one or more flags in the internal bitmask.
+   * Flips one or more flags in the internal bitmask.
    * Any set bits become unset, and any unset bits become set.
    *
-   * @param flags - A single flag or array of flags to toggle.
+   * @param flags - A single flag or array of flags to flip.
    */
-  public toggle(flags: OneOrMany<number>): void {
+  public flip(flags: OneOrMany<number>): void {
     for (const flag of toArray(flags)) {
-      this.store ^= flag;
+      this.store.flip(flag);
     }
   }
 }
