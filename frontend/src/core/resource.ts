@@ -1,4 +1,4 @@
-/** A container holding a typed value `T`. */
+/** "Globally unique" data of some kind `T`. */
 export interface Resource<T> {
   value: T;
 }
