@@ -1,3 +1,5 @@
+import { panic } from "./error";
+
 /**
  * Rust-like Option type in TypeScript.
  *
@@ -30,7 +32,27 @@ export function isNone<T>(option: Option<T>): option is { kind: "None" } {
 }
 
 /**
+ * Unwraps a `Some` value, returning the contained data.
+ *
+ * Throws an Error if the `Option` is `None`.
+ *
+ * @param option - The `Option` to unwrap.
+ * @returns The contained value if `Some`.
+ * @throws An Error if `None`.
+ */
+export function unwrap<T>(option: Option<T>): T {
+  if (isSome(option)) {
+    return option.value;
+  }
+
+  panic("Called `unwrap()` on a `None` value");
+}
+
+/**
  * Extracts the value if "Some", or returns `defaultValue` if "None".
+ *
+ * @param option - The `Option` to unwrap.
+ * @returns The unwrapped value if `Some`, otherwise the `defaultValue`.
  */
 export function unwrapOr<T>(option: Option<T>, defaultValue: T): T {
   return isSome(option) ? option.value : defaultValue;
