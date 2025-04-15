@@ -1,26 +1,34 @@
 /**
- * A minimal async-friendly component interface.
+ * Async-friendly component interface.
  */
-export abstract class Component<World = any> {
+export abstract class Component {
   /**
-   * Called when the component is first registered or loaded.
-   *
-   * @param world - application context.
+   * Register events/resources this component owns.
+   * Called right after addComponent.
    */
-  public build(_world: World): Promise<void> {
+  public init(): Promise<void> {
     return Promise.resolve();
   }
 
   /**
-   * Called when the component (or application) is shutting down.
-   * Implement this to:
-   * - Close open connections
-   * - Remove event listeners
-   * - Free allocated resources
-   *
-   * @param world - application context.
+   * Called after all components/resources are registered.
+   * Useful for wiring between components.
    */
-  public cleanup(_world: World): Promise<void> {
+  public setup(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Start listening to events, animation frames, etc.
+   */
+  public start(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Final: Cleanup
+   */
+  public cleanup(): Promise<void> {
     return Promise.resolve();
   }
 }

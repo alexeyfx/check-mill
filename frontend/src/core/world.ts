@@ -26,7 +26,7 @@ export class World {
   /**
    * A collection of components.
    */
-  private readonly components = new SparseSet<Component<World>>();
+  private readonly components = new SparseSet<Component>();
 
   /**
    * Registers a static resource if not already present.
@@ -54,14 +54,14 @@ export class World {
   /**
    * Registers a component.
    */
-  public addComponent<C extends Component<World>>(component: C): Id<C> {
+  public addComponent<C extends Component>(component: C): Id<C> {
     return this.components.add(component) as Id<C>;
   }
 
   /**
    *
    */
-  public readComponent<C extends Component<World>>(id: Id<C>): Option<C> {
+  public readComponent<C extends Component>(id: Id<C>): Option<C> {
     const component = this.components.get(id);
 
     return component ? (Some(component) as Option<C>) : None();
@@ -101,15 +101,20 @@ export class World {
     return event ? Some(event) : None();
   }
 
+  /**
+   * Starts world's component execution
+   */
   public async run(): Promise<() => Promise<void>> {
     const components = this.components.toArray();
 
-    await Promise.all(components.map((component) => component.build(this)));
+    await Promise.all(components.map((c) => c.init()));
+
+    await Promise.all(components.map((c) => c.setup()));
+
+    await Promise.all(components.map((c) => c.start()));
 
     return async (): Promise<void> => {
-      const components = this.components.toArray();
-
-      await Promise.all(components.map((component) => component.cleanup(this)));
+      await Promise.all(components.map((c) => c.cleanup()));
     };
   }
 }
