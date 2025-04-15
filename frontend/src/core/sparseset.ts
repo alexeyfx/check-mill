@@ -65,18 +65,18 @@ export class SparseSet<T> {
 
     this.size -= 1;
 
-    const denseIdx = this.size;
-    const denseRemoveIdx = this.sparse[index];
-    const denseRemoveItem = this.dense[denseRemoveIdx].data;
+    const removeDenseIdx = this.sparse[index];
+    const removedItem = this.dense[removeDenseIdx];
 
-    const denseTailElement = this.dense[denseIdx];
-    this.dense[denseRemoveIdx] = denseTailElement;
-    this.sparse[denseTailElement.index] = denseRemoveIdx;
+    if (removeDenseIdx !== this.size) {
+      const tailElement = this.dense[this.size];
+      this.dense[removeDenseIdx] = tailElement;
+      this.sparse[tailElement.index] = removeDenseIdx;
+    }
 
-    this.dense[denseIdx].index = index;
-    this.sparse[index] = denseIdx;
+    this.dense.pop();
 
-    return denseRemoveItem;
+    return removedItem.data;
   }
 
   public clear(): T[] {
