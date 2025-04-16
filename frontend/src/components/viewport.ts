@@ -1,6 +1,6 @@
-import { TypedEvent } from "../core copy";
-import type { Component, EventReader } from "../core copy";
-import { DisposableStore } from "./disposable";
+import type { EventReader } from "../primitives";
+import { DisposableStore, TypedEvent } from "../primitives";
+import type { Component } from "./component";
 
 export interface ViewportType extends Component {
   resized: EventReader<ResizeObserverEntry[]>;

@@ -1,6 +1,6 @@
-import type { Component } from "../core copy";
-import { TypedEvent, fromEvent, prevent } from "../core copy";
-import { DisposableStore } from "./disposable";
+import { DisposableStore, fromEvent, TypedEvent } from "../primitives";
+import { prevent } from "../utils";
+import type { Component } from "./component";
 
 export interface DragType extends Component {}
 

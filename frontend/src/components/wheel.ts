@@ -1,6 +1,6 @@
-import type { Component, EventReader } from "../core copy";
-import { TypedEvent, fromEvent } from "../core copy";
-import { DisposableStore } from "./disposable";
+import type { EventReader } from "../primitives";
+import { DisposableStore, fromEvent, TypedEvent } from "../primitives";
+import type { Component } from "./component";
 
 export interface WheelType extends Component {
   wheeled: EventReader<WheelEvent>;
@@ -18,29 +18,18 @@ export function Wheel(root: HTMLElement): WheelType {
   const wheeled = new TypedEvent<WheelEvent>();
 
   function init(): Promise<void> {
-    const [focusIn, disposeFocusIn] = fromEvent(root, "focusin");
+    const [wheel, disposeWheel] = fromEvent(root, "wheel");
 
-    focusIn.register(onFocusIn);
+    wheel.register(onWheel);
 
-    disposable.pushStatic(wheeled.clear, disposeFocusIn);
+    disposable.pushStatic(wheeled.clear, disposeWheel);
 
     return Promise.resolve();
   }
 
-  function onFocusIn() {
-    const [focusOut, disposeFocusOut] = fromEvent(root, "focusout");
-    const [wheel, disposeWheel] = fromEvent(root, "wheel");
-
-    focusOut.register(onFocusOut);
-    wheel.register(onWheel);
-
-    disposable.pushTemporal(disposeFocusOut, disposeWheel);
-  }
-
-  function onFocusOut() {
-    disposable.flushTemporal();
-  }
-
+  /**
+   * Handles wheel event.
+   */
   function onWheel(event: WheelEvent) {
     wheeled.emit(event);
   }

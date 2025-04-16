@@ -1,6 +1,6 @@
-import { UintXBitSet } from "./bitset";
+import { UintXBitSet } from "./x_bit_set";
 
-import { toArray, type OneOrMany } from "./utils";
+import { toArray, type OneOrMany } from "../utils";
 
 /**
  * A bitmask-based state manager.
