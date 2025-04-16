@@ -3,3 +3,4 @@ export * from "./error";
 export * from "./option";
 export * from "./types";
 export * from "./dom";
+export * from "./function";

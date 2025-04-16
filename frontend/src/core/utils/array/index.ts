@@ -1,1 +1,2 @@
-export * from './toArray';
+export * from "./toArray";
+export * from "./flush";
