@@ -1,87 +1,63 @@
-import type { Disposable, EventReader, Id } from "../core";
-import { World, Component, unwrap, flush, call } from "../core";
-import { Resources } from "../types";
+import { TypedEvent } from "../core copy";
+import type { Component, EventReader } from "../core copy";
+import { DisposableStore } from "./disposable";
+
+export interface ViewportType extends Component {
+  resized: EventReader<ResizeObserverEntry[]>;
+  measure(): DOMRect;
+}
 
 /**
  * Viewport component observes size changes of the root element
  */
-export class Viewport extends Component {
+export function Viewport(root: HTMLElement): ViewportType {
   /**
    * Latest bounding client rect of the root element.
    */
-  private rect!: DOMRect;
-
-  /**
-   * ID of the internal resize event.
-   */
-  private resizedId!: Id<ResizeObserverEntry[]>;
-
-  /**
-   * Lifespan-bound disposables for long-lived resources.
-   */
-  private disposables: Disposable[] = [];
+  let memoRect: DOMRect = root.getBoundingClientRect();
 
   /**
    * ResizeObserver instance attached to the root element.
    */
-  private resizeObserver: ResizeObserver | null = null;
-
-  constructor(
-    private readonly world: World,
-    private readonly resources: Resources
-  ) {
-    super();
-  }
+  let resizeObserver: ResizeObserver;
 
   /**
-   * Returns the latest known size of the viewport (root element's bounding rect).
+   * Disposable store for managing cleanup functions.
    */
-  public get size(): DOMRect {
-    return this.rect;
-  }
+  const disposable = DisposableStore();
 
   /**
    * Returns a reader for the resize event stream.
    */
-  public get resized(): EventReader<ResizeObserverEntry[]> {
-    return unwrap(this.world.eventReader(this.resizedId));
-  }
+  const resized = new TypedEvent<ResizeObserverEntry[]>();
 
-  public init(): Promise<void> {
-    this.resizedId = this.world.addEvent();
+  function init(): Promise<void> {
+    resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(root);
 
-    return Promise.resolve();
-  }
-
-  public setup(): Promise<void> {
-    const { rootId } = this.resources;
-    const root = unwrap(this.world.readResource(rootId));
-    const writer = unwrap(this.world.eventWriter(this.resizedId));
-
-    const handler = (entries: ResizeObserverEntry[]) => {
-      this.rect = root.getBoundingClientRect();
-      writer.emit(entries);
-    };
-
-    this.resizeObserver = new ResizeObserver(handler);
-    this.resizeObserver?.observe(root);
-
-    const resizeObserverDispose = () => {
-      this.resizeObserver?.disconnect();
-      this.resizeObserver = null;
-    };
-
-    const resizedDispose = () =>
-      unwrap(this.world.removeEvent(this.resizedId)).clear();
-
-    this.disposables.push(resizedDispose, resizeObserverDispose);
+    disposable.pushStatic(resized.clear, () => resizeObserver.disconnect());
 
     return Promise.resolve();
   }
 
-  public cleanup(): Promise<void> {
-    flush(this.disposables, call);
+  function measure(): DOMRect {
+    return memoRect;
+  }
 
+  function onResize(entries: ResizeObserverEntry[]): void {
+    memoRect = root.getBoundingClientRect();
+    resized.emit(entries);
+  }
+
+  function destroy(): Promise<void> {
+    disposable.flushAll();
     return Promise.resolve();
   }
+
+  return {
+    init,
+    destroy,
+    measure,
+    resized,
+  };
 }

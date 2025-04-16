@@ -153,7 +153,7 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
 /**
  * For known targets, we can map them to their respective EventMap.
  */
-type EventMapFromTarget<T> = T extends Window
+export type EventMapFromTarget<T> = T extends Window
   ? WindowEventMap
   : T extends Document
   ? DocumentEventMap
