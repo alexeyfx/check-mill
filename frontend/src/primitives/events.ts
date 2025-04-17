@@ -179,7 +179,7 @@ export function fromEvent<
 >(
   target: T,
   type: K,
-  options?: EventListenerOptions
+  options?: AddEventListenerOptions
 ): [TypedEvent<E>, Disposable] {
   const typedEvent = new TypedEvent<E>();
 
