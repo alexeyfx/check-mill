@@ -1,4 +1,4 @@
-import { UintXBitSet } from "./x_bit_set";
+import { UintXBitSet } from "./xbit-set";
 
 import { toArray, type OneOrMany } from "../utils";
 
