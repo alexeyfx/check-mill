@@ -180,7 +180,7 @@ export function fromEvent<
   target: T,
   type: K,
   options?: AddEventListenerOptions
-): [TypedEvent<E>, Disposable] {
+): [EventReader<E>, Disposable] {
   const typedEvent = new TypedEvent<E>();
 
   const handler = (event: Event) => typedEvent.emit(event as E);

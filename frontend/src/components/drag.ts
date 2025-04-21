@@ -1,7 +1,11 @@
 import { DisposableStore, fromEvent } from "../primitives";
 import { prevent } from "../utils";
-import { AxisType } from "./axis";
+import type { AccelerationType } from './acceleration';
+import type { AnimationsType } from "./animations";
+import type { AxisType } from "./axis";
 import type { Component } from "./component";
+import type { LocationType } from "./location";
+
 
 /**
  * If the user stops dragging for this duration while keeping the pointer down,
@@ -9,13 +13,15 @@ import type { Component } from "./component";
  */
 const LOG_INTERVAL = 170;
 
-export interface DragType extends Component {}
+export interface DragType extends Component {
+  interacting(): boolean;
+}
 
 /**
  * Drag component handles pointer-based dragging logic.
  * It tracks pointer events to support dragging along a single axis.
  */
-export function Drag(root: HTMLElement, axis: AxisType): DragType {
+export function Drag(root: HTMLElement, location: LocationType, animations: AnimationsType, axis: AxisType, acceleration: AccelerationType): DragType {
   /**
    * First recorded pointer event in the drag interaction.
    * Used as the origin to calculate movement deltas.
@@ -34,6 +40,11 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   let preventClick: boolean = false;
 
   /**
+   * True while the pointer is actively pressed down during interaction.
+   */
+  let isInteracting: boolean = false;
+
+  /**
    * Disposable store for managing cleanup functions.
    */
   const disposable = DisposableStore();
@@ -44,10 +55,10 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    */
   function init(): Promise<void> {
     const [onDown, disposeDown] = fromEvent(root, "pointerdown");
-    const [_onClick, disposeClick] = fromEvent(root, "click");
+    const [onClick, disposeClick] = fromEvent(root, "click");
 
     onDown.register(onPointerDown);
-    _onClick.register(onClick);
+    onClick.register(onMouseClick);
 
     disposable.pushStatic(disposeDown, disposeClick);
 
@@ -55,24 +66,24 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   }
 
   /**
+   * Returns true if any pointer event active;
+   */
+  function interacting(): boolean {
+    return isInteracting;
+  }
+
+  /**
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
-    startEvent = event;
     lastEvent = event;
+    startEvent = event;
     preventClick = !Boolean(event.buttons);
+    isInteracting = true;
 
-    const [onUp, disposeUp] = fromEvent(root, "pointerup");
-    const [onMove, disposeMove] = fromEvent(root, "pointermove", {
-      passive: false,
-    });
-    const [onCancel, disposeCancel] = fromEvent(root, "pointercancel");
-
-    onUp.register(onPointerUp);
-    onMove.register(onPointerMove);
-    onCancel.register(onPointerUp);
-
-    disposable.pushTemporal(disposeUp, disposeMove, disposeCancel);
+    location.target.set(location.current);
+    acceleration.useFriction(0).useDuration(0);
+    addDragEvents();
   }
 
   /**
@@ -87,13 +98,26 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
       startEvent = event;
     }
 
+    acceleration.useFriction(0.3).useDuration(0.75);
+    animations.start();
+    location.target.add(axis.direction(diff));
     prevent(event, true);
   }
 
   /**
    * Handles pointer up event.
    */
-  function onPointerUp(_event: PointerEvent): void {
+  function onPointerUp(event: PointerEvent): void {
+    isInteracting = false;
+
+    const velocity = computeVelocity(event);
+    const destination = computeDestination(velocity);
+    const speed = Math.abs(velocity);
+
+    acceleration.useFriction(0.3).useDuration(speed);
+    location.target.set(destination);
+    animations.start();
+
     disposable.flushTemporal();
   }
 
@@ -101,11 +125,51 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Prevents click events immediately after a drag interaction.
    * This avoids accidental activation of buttons or links.
    */
-  function onClick(event: MouseEvent): void {
+  function onMouseClick(event: MouseEvent): void {
     if (preventClick) {
       prevent(event, true);
       preventClick = false;
     }
+  }
+
+  function addDragEvents(): void {
+    const [onUp, disposeUp] = fromEvent(root, "pointerup");
+    const [onMove, disposeMove] = fromEvent(root, "pointermove", {
+      passive: false,
+    });
+    const [onCancel, disposeCancel] = fromEvent(root, "pointercancel");
+    const [onOut, disposeOut] = fromEvent(root, "pointerout");
+    const [onLeave, disposeLeave] = fromEvent(root, "pointerleave");
+
+    onUp.register(onPointerUp);
+    onMove.register(onPointerMove);
+    onCancel.register(onPointerUp);
+    onOut.register(onPointerUp);
+    onLeave.register(onPointerUp);
+
+    disposable.pushTemporal(
+      disposeUp,
+      disposeMove,
+      disposeCancel,
+      disposeOut,
+      disposeLeave,
+    );
+  }
+
+  function computeVelocity(event: PointerEvent): number {
+    if (!startEvent || !lastEvent) {
+      return 0;
+    }
+
+    const diffDrag = readPoint(lastEvent) - readPoint(startEvent);
+    const diffTime = readTime(event) - readTime(startEvent);
+    const velocity = diffDrag / diffTime;
+    
+    return velocity;
+  }
+
+  function computeDestination(velocity: number): number {
+    return location.current.get() + velocity * 100;
   }
 
   /**
@@ -149,5 +213,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   return {
     init,
     destroy,
+    interacting,
   };
 }
