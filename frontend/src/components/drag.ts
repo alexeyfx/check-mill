@@ -29,13 +29,11 @@ export function Drag(
 ): DragType {
 	/**
 	 * First recorded pointer event in the drag interaction.
-	 * Used as the origin to calculate movement deltas.
 	 */
 	let startEvent: PointerEvent;
 
 	/**
 	 * Most recent pointer event.
-	 * Used to calculate deltas during ongoing drag interaction.
 	 */
 	let lastEvent: PointerEvent;
 
