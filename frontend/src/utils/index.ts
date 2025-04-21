@@ -4,3 +4,4 @@ export * from "./error";
 export * from "./function";
 export * from "./number";
 export * from "./types";
+export * from "./math";

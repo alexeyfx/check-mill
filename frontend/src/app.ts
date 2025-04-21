@@ -1,88 +1,77 @@
-import { Acceleration, Animations, Axis, Drag, Wheel, Translate, Location } from "./components";
+import {
+	Acceleration,
+	Animations,
+	Axis,
+	Drag,
+	Wheel,
+	Translate,
+	Location,
+} from "./components";
 import { query } from "./utils";
 
 export async function main() {
+	/****************************************
+	 * Required dom elements
+	 ****************************************/
 
-  /**************************************** 
-   * Required dom elements 
-   ****************************************/
+	/** Application root element */
+	const root = query(document, "#root", true) as HTMLElement;
 
-  /** Application root element */
-  const root = query(document, "#root", true) as HTMLElement;
+	/** Application scroll-body element */
+	const container = query(document, ".container", true) as HTMLElement;
 
-  /** Application scroll-body element */
-  const container = query(document, ".container", true) as HTMLElement;
+	/****************************************
+	 * Application data-components
+	 ****************************************/
 
+	/** Scroll direction component */
+	const axis = Axis("y");
 
+	const location = Location(0);
 
+	/****************************************
+	 * Application controller-components
+	 ****************************************/
 
-  /**************************************** 
-   * Application data-components 
-   ****************************************/
+	const acceleration = Acceleration(location, 0, 0.68);
 
-  /** Scroll direction component */
-  const axis = Axis("y");
+	const translate = Translate(axis, container);
 
-  const location = Location(0);
+	const animations = Animations(
+		document,
+		window,
+		() => acceleration.seek(),
+		(alpha) => {
+			const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
 
+			if (hasSettledAndIdle) {
+				animations.stop();
+			}
 
+			const interpolatedLocation =
+				location.current.get() * alpha + location.previous.get() * (1 - alpha);
 
+			location.offset.set(interpolatedLocation);
+			translate.to(location.offset.get());
+		}
+	);
 
-  /**************************************** 
-   * Application controller-components
-   ****************************************/
+	const drag = Drag(root, location, animations, axis, acceleration);
 
-  const acceleration = Acceleration(
-    location,
-    0,
-    0.68
-  );
+	const wheel = Wheel(root, acceleration, animations, axis, location);
 
-  const wheel = Wheel(root);
+	/****************************************
+	 * Run components initialization lifecycle method
+	 ****************************************/
 
-  const translate = Translate(axis, container);
+	await Promise.all([drag, wheel, animations].map((m) => m.init()));
 
-  const animations = Animations(
-    document,
-    window,
-    () => acceleration.seek(),
-    (alpha) => {
-      const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
-  
-      if (hasSettledAndIdle) {
-        animations.stop();
-      }
-    
-      const interpolatedLocation =
-        location.current.get() * alpha + location.previous.get() * (1 - alpha);
-    
-      location.offset.set(interpolatedLocation);
-      translate.to(location.offset.get());
-    }
-  );
+	/****************************************
+	 * After initialization
+	 ****************************************/
 
-  const drag = Drag(root, location, animations, axis, acceleration);
-
-
-
-
-  /**************************************** 
-   * Run components initialization lifecycle method
-   ****************************************/
-
-  await Promise.all([drag, wheel, animations].map((m) => m.init()));
-
-
-
-
-  /**************************************** 
-   * After initialization
-   ****************************************/
-
-  console.log('Running...');
+	console.log("Running...");
 }
-
-
 
 // const render: AnimationsRenderType = (
 //   {
