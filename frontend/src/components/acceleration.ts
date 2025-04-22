@@ -1,4 +1,3 @@
-
 import type { LocationType } from "./location";
 
 export interface AccelerationType {
@@ -16,7 +15,7 @@ export interface AccelerationType {
 export function Acceleration(
   location: LocationType,
   baseDuration: number,
-  baseFriction: number,
+  baseFriction: number
 ): AccelerationType {
   let scrollVelocity = 0;
 
@@ -25,7 +24,7 @@ export function Acceleration(
   let scrollDuration = baseDuration;
 
   let scrollFriction = baseFriction;
-  
+
   let rawLocation = location.current.get();
 
   let rawLocationPrevious = 0;
@@ -101,8 +100,8 @@ export function Acceleration(
     useBaseFriction,
     useBaseDuration,
     useFriction,
-    useDuration
+    useDuration,
   };
-  
+
   return self;
 }

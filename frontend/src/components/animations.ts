@@ -32,9 +32,7 @@ export function Animations(
   const disposable = DisposableStore();
 
   function init(): Promise<void> {
-    disposable.pushStatic(
-      event(ownerDocument, "visibilitychange", onVisibilityChange)
-    );
+    disposable.pushStatic(event(ownerDocument, "visibilitychange", onVisibilityChange));
 
     return Promise.resolve();
   }
@@ -58,10 +56,7 @@ export function Animations(
     accumulatedTime += timeElapsed;
 
     let updatesCount = 0;
-    while (
-      accumulatedTime >= fixedTimeStep &&
-      maxUpdatesPerFrame > updatesCount
-    ) {
+    while (accumulatedTime >= fixedTimeStep && maxUpdatesPerFrame > updatesCount) {
       update();
       accumulatedTime -= fixedTimeStep;
       updatesCount += 1;

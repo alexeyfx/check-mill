@@ -5,10 +5,7 @@ export type TranslateType = {
   clear: () => void;
 };
 
-export function Translate(
-  axis: AxisType,
-  container: HTMLElement
-): TranslateType {
+export function Translate(axis: AxisType, container: HTMLElement): TranslateType {
   let previousTarget: number | null = null;
 
   const translate = axis.isVertical ? y : x;
