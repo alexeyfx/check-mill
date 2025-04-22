@@ -151,7 +151,7 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
 }
 
 /**
- * For known targets, we can map them to their respective EventMap.
+ * Maps a concrete {@link EventTarget} subtype to its corresponding DOM event map.
  */
 export type EventMapFromTarget<T> = T extends Window
   ? WindowEventMap
@@ -159,38 +159,28 @@ export type EventMapFromTarget<T> = T extends Window
   ? DocumentEventMap
   : T extends HTMLElement
   ? HTMLElementEventMap
-  : // Fallback if we don't have a known map:
-    Record<string, Event>;
+  : Record<string, Event>;
 
 /**
- * A function similar to RxJS `fromEvent` that wraps a DOM/native event in a `TypedEvent`.
+ * Strongly‑typed wrapper around `addEventListener`.
  *
- * @param target    - The event source.
- * @param eventName - The name of the event (e.g., "click", "keyup").
+ * @typeParam T – The concrete event target (e.g. `Window`, `HTMLElement`).
+ * @typeParam K – A valid key of {@link EventMapFromTarget | EventMapFromTarget<T>}.
  *
- * @returns An array containing:
- *    1) `typedEvent`: The `TypedEvent` that emits each time the native event fires.
- *    2) `dispose`: A function to stop emitting by removing the underlying native listener.
+ * @returns A **`Disposable`** function; call it to detach the listener.
  */
-export function fromEvent<
+export function event<
   T extends EventTarget,
-  K extends keyof EventMapFromTarget<T>,
-  E extends EventMapFromTarget<T>[K]
+  K extends keyof EventMapFromTarget<T>
 >(
   target: T,
   type: K,
+  listener: Listener<EventMapFromTarget<T>[K]>,
   options?: AddEventListenerOptions
-): [EventReader<E>, Disposable] {
-  const typedEvent = new TypedEvent<E>();
+): Disposable {
+  const typedListener = listener as unknown as EventListener;
+  target.addEventListener(type as string, typedListener, options);
 
-  const handler = (event: Event) => typedEvent.emit(event as E);
-
-  target.addEventListener(type as string, handler, options);
-
-  const dispose = () => {
-    typedEvent.clear();
-    target.removeEventListener(type as string, handler, options);
-  };
-
-  return [typedEvent, dispose];
+  return () =>
+    target.removeEventListener(type as string, typedListener, options);
 }
