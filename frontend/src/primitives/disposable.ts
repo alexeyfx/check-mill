@@ -2,11 +2,11 @@ import { call, flush } from "../utils";
 import { Disposable } from "./events";
 
 export interface DisposableStoreType {
-  pushStatic(...funcs: Disposable[]): DisposableStoreType;
-  pushTemporal(...funcs: Disposable[]): DisposableStoreType;
-  flushStatic(): DisposableStoreType;
-  flushTemporal(): DisposableStoreType;
-  flushAll(): DisposableStoreType;
+  pushStatic(...funcs: Disposable[]): void;
+  pushTemporal(...funcs: Disposable[]): void;
+  flushStatic(): void;
+  flushTemporal(): void;
+  flushAll(): void;
 }
 
 export function DisposableStore(): DisposableStoreType {
@@ -23,58 +23,46 @@ export function DisposableStore(): DisposableStoreType {
   const temporalDisposables: Disposable[] = [];
 
   /**
-   * DisposableStore instance (self-reference for fluent chaining).
-   */
-  let self: DisposableStoreType;
-
-  /**
    * Adds one or more static disposables to the store.
    */
-  function pushStatic(...funcs: Disposable[]): DisposableStoreType {
+  function pushStatic(...funcs: Disposable[]): void {
     staticDisposables.push(...funcs);
-    return self;
   }
 
   /**
    * Adds one or more temporal disposables to the store.
    */
-  function pushTemporal(...funcs: Disposable[]): DisposableStoreType {
+  function pushTemporal(...funcs: Disposable[]): void {
     temporalDisposables.push(...funcs);
-    return self;
   }
 
   /**
    * Flushes (calls and clears) all static disposables.
    */
-  function flushStatic(): DisposableStoreType {
+  function flushStatic(): void {
     flush(staticDisposables, call);
-    return self;
   }
 
   /**
    * Flushes (calls and clears) all temporal disposables.
    */
-  function flushTemporal(): DisposableStoreType {
+  function flushTemporal(): void {
     flush(temporalDisposables, call);
-    return self;
   }
 
   /**
    * Flushes both static and temporal disposables.
    */
-  function flushAll(): DisposableStoreType {
+  function flushAll(): void {
     flushStatic();
     flushTemporal();
-    return self;
   }
 
-  self = {
+  return {
     pushStatic,
     pushTemporal,
     flushStatic,
     flushTemporal,
     flushAll,
   };
-
-  return self;
 }
