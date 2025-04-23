@@ -4,6 +4,7 @@ export * from "./axis";
 export * from "./component";
 export * from "./checkbox-factory";
 export * from "./drag";
+export * from "./layout";
 export * from "./location";
 export * from "./slide-factory";
 export * from "./translate";
