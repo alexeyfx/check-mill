@@ -1,6 +1,5 @@
 import { clamp } from "../../utils";
 import type { LayoutConfig, LayoutMetrics } from "./types";
-import { isLayoutConfigsEqual } from "./utils";
 
 export interface LayoutType {
   metrics(): Readonly<LayoutMetrics>;
@@ -8,51 +7,18 @@ export interface LayoutType {
 }
 
 export class Layout implements LayoutType {
-  /**
-   * Current layout configuration
-   */
+  private clampedHeight = 0;
+  private rows = 0;
+  private columns = 0;
+  private slideWidth = 0;
+  private slideHeight = 0;
+  private materializedSlides = 0;
+  private ghostSlides = 0;
+  private totalSlides = 0;
+  private contentWidth = 0;
+  private contentHeight = 0;
+
   private layoutConfig: Readonly<LayoutConfig>;
-
-  /**
-   * Computed height after applying clamping logic (min and max limits)
-   */
-  private clampedHeight!: number;
-
-  /**
-   * Number of columns that can fit horizontally in the viewport
-   */
-  private columns!: number;
-
-  /**
-   * Number of rows that can fit vertically within the clamped height
-   */
-  private rows!: number;
-
-  /**
-   * Final computed width of the entire layout (including padding and gaps)
-   */
-  private slideWidth!: number;
-
-  /**
-   * Final computed height of the entire layout
-   */
-  private slideHeight!: number;
-
-  /**
-   * Total count of “real”, content-bearing slides that are currently
-   * materialized in the DOM and can appear in the viewport.
-   */
-  private materializedSlides!: number;
-
-  /**
-   * Count of “ghost” slides — lightweight stubs or placeholders that
-   * remain in the DOM even when they hold no user content.
-   */
-  private ghostSlides!: number;
-
-  /**
-   * Cached metrics — rebuilt lazily when `layoutConfig` changes.
-   */
   private cachedMetrics: LayoutMetrics | null = null;
 
   public constructor(config: Readonly<LayoutConfig>) {
@@ -60,21 +26,11 @@ export class Layout implements LayoutType {
     this.recomputeAll();
   }
 
-  /**
-   * Recomputes layout metrics based on a new config.
-   */
-  public update(newLayoutConfig: LayoutConfig): void {
-    if (isLayoutConfigsEqual(newLayoutConfig, this.layoutConfig)) {
-      return;
-    }
-
-    this.layoutConfig = newLayoutConfig;
+  public update(newConfig: Readonly<LayoutConfig>): void {
+    this.layoutConfig = newConfig;
     this.recomputeAll();
   }
 
-  /**
-   * Returns current layout metrics.
-   */
   public metrics(): Readonly<LayoutMetrics> {
     if (this.cachedMetrics) {
       return this.cachedMetrics;
@@ -87,46 +43,48 @@ export class Layout implements LayoutType {
       slideHeight,
       materializedSlides,
       ghostSlides,
-      layoutConfig: { checkboxSize, cellPadding, layoutPadding },
+      totalSlides,
+      contentWidth,
+      contentHeight,
     } = this;
 
-    const totalCells = rows * columns;
-    const totalSlides = materializedSlides + ghostSlides;
+    const { checkboxSize, cellPadding, slidePadding, contentGap } = this.layoutConfig;
 
     this.cachedMetrics = {
       checkboxSize,
       cellPadding,
-      layoutPadding,
+      slidePadding,
       rows,
       columns,
-      totalCells,
-      slideHeight,
+      totalCells: rows * columns,
       slideWidth,
-      materializedSlides,
-      ghostSlides,
+      slideHeight,
       totalSlides,
+      ghostSlides,
+      materializedSlides,
+      contentGap,
+      contentWidth,
+      contentHeight,
     };
 
     return this.cachedMetrics;
   }
 
-  /**
-   * Recompute *all* derived geometry from `layoutConfig`.
-   */
+  // prettier-ignore
   private recomputeAll(): void {
-    this.clampedHeight = this.clampHeight();
-    this.rows = this.calculateRows();
-    this.columns = this.calculateColumns();
-    this.slideWidth = this.calculateWidth();
-    this.slideHeight = this.calculateHeight();
+    this.clampedHeight      = this.clampHeight();
+    this.rows               = this.calculateRows();
+    this.columns            = this.calculateColumns();
+    this.slideWidth         = this.calculateSlideWidth();
+    this.slideHeight        = this.calculateSlideHeight();
+    this.ghostSlides        = this.calculateGhostSlides();
     this.materializedSlides = this.calculateMaterializedSlides();
-    this.ghostSlides = this.calculateGhostSlides();
-    this.cachedMetrics = null;
+    this.totalSlides        = this.calculateTotalSlides();
+    this.contentWidth       = this.calculateContentWidth();
+    this.contentHeight      = this.calculateContentHeight();
+    this.cachedMetrics      = null;
   }
 
-  /**
-   * Clamps the allowed layout height based on percentage of viewport height
-   */
   private clampHeight(): number {
     const { viewportRect, maxHeightPercent, minClampedHeight } = this.layoutConfig;
     const unclamped = viewportRect.height * (maxHeightPercent / 100);
@@ -134,9 +92,6 @@ export class Layout implements LayoutType {
     return clamp(unclamped, minClampedHeight, viewportRect.height);
   }
 
-  /**
-   * Determines how many columns of cells can fit horizontally within the viewport.
-   */
   private calculateColumns(): number {
     const { checkboxSize, cellPadding, viewportRect, maxWidth } = this.layoutConfig;
     const availableWidth = Math.min(
@@ -144,7 +99,7 @@ export class Layout implements LayoutType {
       maxWidth - 2 * this.readHorizontalPadding()
     );
 
-    let count = 0;
+    let count = 1;
     while ((count + 1) * (checkboxSize + 2 * cellPadding) <= availableWidth) {
       count += 1;
     }
@@ -152,9 +107,6 @@ export class Layout implements LayoutType {
     return count;
   }
 
-  /**
-   * Determines how many rows of cells can fit vertically within the clamped height.
-   */
   private calculateRows(): number {
     const { checkboxSize, cellPadding } = this.layoutConfig;
     const availableHeight = this.clampedHeight - 2 * this.readVerticalPadding();
@@ -167,29 +119,20 @@ export class Layout implements LayoutType {
     return count;
   }
 
-  /**
-   * Calculates the total width required to render the current number of columns.
-   */
-  private calculateWidth(): number {
+  private calculateSlideWidth(): number {
     const { checkboxSize, cellPadding } = this.layoutConfig;
     const horizontalPadding = this.readHorizontalPadding();
 
     return this.columns * (checkboxSize + 2 * cellPadding) + 2 * horizontalPadding;
   }
 
-  /**
-   * Calculates the total height required to render the current number of rows.
-   */
-  private calculateHeight(): number {
+  private calculateSlideHeight(): number {
     const { checkboxSize, cellPadding } = this.layoutConfig;
     const verticalPadding = this.readVerticalPadding();
 
     return this.rows * (checkboxSize + 2 * cellPadding) + 2 * verticalPadding;
   }
 
-  /**
-   * Calculates how many slides can fit into the current viewport height.
-   */
   private calculateMaterializedSlides(): number {
     const { viewportRect } = this.layoutConfig;
     let materialized = Math.ceil(viewportRect.height / this.clampedHeight);
@@ -201,24 +144,32 @@ export class Layout implements LayoutType {
     return Math.max(materialized, 3);
   }
 
-  /**
-   * Calculates how many "ghost" slides are kept preloaded (2x viewport buffer).
-   */
   private calculateGhostSlides(): number {
-    return 3 * this.materializedSlides;
+    const { ghostSlidesMult } = this.layoutConfig;
+    return ghostSlidesMult * this.materializedSlides;
   }
 
-  /**
-   * Extracts the vertical padding value from layoutPadding.
-   */
+  private calculateTotalSlides(): number {
+    return this.materializedSlides + this.ghostSlides;
+  }
+
+  private calculateContentWidth(): number {
+    return this.slideWidth;
+  }
+
+  private calculateContentHeight(): number {
+    const { contentGap } = this.layoutConfig;
+    const spacing = contentGap * (this.totalSlides - 1);
+    const slidesHeight = this.totalSlides * this.slideHeight;
+
+    return spacing * slidesHeight;
+  }
+
   private readVerticalPadding(): number {
-    return this.layoutConfig.layoutPadding[1];
+    return this.layoutConfig.slidePadding[1];
   }
 
-  /**
-   * Extracts the horizontal padding value from layoutPadding.
-   */
   private readHorizontalPadding(): number {
-    return this.layoutConfig.layoutPadding[0];
+    return this.layoutConfig.slidePadding[0];
   }
 }

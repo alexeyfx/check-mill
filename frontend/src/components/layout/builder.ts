@@ -1,32 +1,36 @@
 import type { LayoutConfig } from "./types";
 
+/**
+ * A fluent builder for constructing or mutating LayoutConfig objects.
+ */
 export class LayoutConfigBuilder {
   /**
    * Internal mutable working state.
    */
-  private readonly config: Partial<LayoutConfig>;
+  private readonly config: LayoutConfig;
 
-  constructor(config: Omit<LayoutConfig, "generation">) {
+  constructor(config: LayoutConfig) {
     this.config = Object.assign({}, config);
   }
 
   /**
-   * Updates selected properties of the layout config.
+   * Applies a partial update to the current config.
+   * Enables chaining for fluent-style usage.
+   *
+   * @param part - Partial layout configuration to apply.
+   * @returns The builder instance.
    */
   public set(part: Partial<LayoutConfig>): LayoutConfigBuilder {
     Object.assign(this.config, part);
     return this;
   }
 
-  public build(): Readonly<LayoutConfig> {
-    this.sign();
-    return Object.assign({}, this.config as LayoutConfig);
-  }
-
   /**
-   * Signs the current working state with a unique generation symbol.
+   * Finalizes the configuration by returning an immutable version of the config.
+   *
+   * @returns A read-only signed LayoutConfig object.
    */
-  private sign(): void {
-    this.config.generation = Symbol("layout-config");
+  public build(): Readonly<LayoutConfig> {
+    return Object.assign({}, this.config);
   }
 }
