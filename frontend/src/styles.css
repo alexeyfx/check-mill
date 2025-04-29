@@ -5,27 +5,54 @@
 }
 
 body {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  font-family: sans-serif;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #root {
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  padding: 12px;
+  width: 100%;
+  min-height: 100%;
+  background-color: #313131;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.171) 2px, transparent 0);
+  background-size: 30px 30px;
+  background-position: -5px -5px;
 }
 
 .container {
-  width: 100%;
-  height: 6000px;
-  background-color: #e5e5f7;
-  background:
-    radial-gradient(circle, transparent 20%, #e5e5f7 20%, #e5e5f7 80%, transparent 80%, transparent),
-    radial-gradient(circle, transparent 20%, #e5e5f7 20%, #e5e5f7 80%, transparent 80%, transparent) 25px 25px,
-    linear-gradient(#444cf7 2px, transparent 2px) 0 -1px,
-    linear-gradient(90deg, #444cf7 2px, #e5e5f7 2px) -1px 0
-  ;
-  background-size: 50px 50px, 50px 50px, 25px 25px, 25px 25px;
-  opacity: 0.8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 100%;
+}
+
+._int_slide {
+  width: var(--slide-width);
+  height: var(--slide-height);
+  padding: var(--slide-padding);
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(4.5px);
+  -webkit-backdrop-filter: blur(4.5px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  content-visibility: auto;
+}
+
+table._int_table {
+  border-spacing: 0px;
+}
+
+td._int_td {
+  width: calc(var(--checkbox-size) + var(--cell-padding));
+  padding: var(--cell-padding);
+  aspect-ratio: 1;
+}
+
+input[type="checkbox"]._int_checkbox {
+  width: var(--checkbox-size);
+  aspect-ratio: 1;
 }
