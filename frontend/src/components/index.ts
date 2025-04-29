@@ -4,6 +4,7 @@ export * from "./axis";
 export * from "./component";
 export * from "./drag";
 export * from "./layout";
+export * from "./presenter";
 export * from "./location";
 export * from "./translate";
 export * from "./viewport";
