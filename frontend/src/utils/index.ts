@@ -3,5 +3,6 @@ export * from "./dom";
 export * from "./error";
 export * from "./function";
 export * from "./math";
+export * from "./performance";
 export * from "./styles";
 export * from "./types";
