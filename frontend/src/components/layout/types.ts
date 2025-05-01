@@ -1,19 +1,19 @@
 // prettier-ignore
 export type LayoutConfig = {
-  cellPadding:      number;
-  checkboxSize:     number;
-  contentGap:       number;
-  slidePadding:     [number, number];
-  ghostSlidesMult:  number;
-  viewportRect:     DOMRect;
-  maxWidth:         number;
-  maxHeightPercent: number;
-  minClampedHeight: number;
+  checkboxSize:          number;
+  gridGap:               number;
+  slidePadding:          [number, number];
+  contentGap:            number;
+  ghostSlidesMult:       number;
+  viewportRect:          DOMRect;
+  slideMaxWidth:         number;
+  slideMaxHeightPercent: number;
+  slideMinClampedHeight: number;
 };
 
 type CommonLayoutProperties = Pick<
   LayoutConfig,
-  "slidePadding" | "contentGap" | "cellPadding" | "checkboxSize"
+  "slidePadding" | "contentGap" | "gridGap" | "checkboxSize"
 >;
 
 // prettier-ignore

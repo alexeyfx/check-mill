@@ -1,114 +1,81 @@
 import {
-	Acceleration,
-	Animations,
-	Axis,
-	Drag,
-	Wheel,
-	Translate,
-	Location,
+  Acceleration,
+  Animations,
+  Axis,
+  Drag,
+  Wheel,
+  Translate,
+  Location,
+  Layout,
+  LayoutConfigBuilder,
+  Presenter,
 } from "./components";
-import { query } from "./utils";
+import { measure, query } from "./utils";
 
 export async function main() {
-	/****************************************
-	 * Required dom elements
-	 ****************************************/
+  /** Application root element */
+  const root = query(document, "#root", true) as HTMLElement;
 
-	/** Application root element */
-	const root = query(document, "#root", true) as HTMLElement;
+  /** Application scroll-body element */
+  const container = query(document, ".container", true) as HTMLElement;
 
-	/** Application scroll-body element */
-	const container = query(document, ".container", true) as HTMLElement;
+  /** Scroll direction component */
+  const axis = Axis("y");
 
-	/****************************************
-	 * Application data-components
-	 ****************************************/
+  const location = Location(0);
 
-	/** Scroll direction component */
-	const axis = Axis("y");
+  const acceleration = Acceleration(location, 0, 0.68);
 
-	const location = Location(0);
+  const translate = Translate(axis, container);
 
-	/****************************************
-	 * Application controller-components
-	 ****************************************/
+  const animations = Animations(
+    document,
+    window,
+    () => acceleration.seek(),
+    (alpha) => {
+      const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
 
-	const acceleration = Acceleration(location, 0, 0.68);
+      if (hasSettledAndIdle) {
+        animations.stop();
+      }
 
-	const translate = Translate(axis, container);
+      const interpolatedLocation =
+        location.current.get() * alpha + location.previous.get() * (1 - alpha);
 
-	const animations = Animations(
-		document,
-		window,
-		() => acceleration.seek(),
-		(alpha) => {
-			const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
+      location.offset.set(interpolatedLocation);
+      translate.to(location.offset.get());
+    }
+  );
 
-			if (hasSettledAndIdle) {
-				animations.stop();
-			}
+  const drag = Drag(root, location, animations, axis, acceleration);
 
-			const interpolatedLocation =
-				location.current.get() * alpha + location.previous.get() * (1 - alpha);
+  const wheel = Wheel(root, acceleration, animations, axis, location);
 
-			location.offset.set(interpolatedLocation);
-			translate.to(location.offset.get());
-		}
-	);
+  await Promise.all([drag, wheel, animations].map((m) => m.init()));
 
-	const drag = Drag(root, location, animations, axis, acceleration);
+  const layoutBuilder = new LayoutConfigBuilder({
+    gridGap: 4,
+    checkboxSize: 24,
+    slidePadding: [6, 6],
+    contentGap: 8,
+    viewportRect: root.getBoundingClientRect(),
+    slideMinClampedHeight: 300,
+    slideMaxHeightPercent: 70,
+    slideMaxWidth: 1024,
+    ghostSlidesMult: 3,
+  });
 
-	const wheel = Wheel(root, acceleration, animations, axis, location);
+  const layout = new Layout(layoutBuilder.build());
+  const presenter = new Presenter(document, container, layout.metrics());
 
-	/****************************************
-	 * Run components initialization lifecycle method
-	 ****************************************/
+  presenter.initializePlaceholders();
 
-	await Promise.all([drag, wheel, animations].map((m) => m.init()));
+  measure("populateSlide(1): ", () => presenter.populateSlide(1));
+  measure("populateSlide(2): ", () => presenter.populateSlide(2));
 
-	/****************************************
-	 * After initialization
-	 ****************************************/
+  setTimeout(() => {
+    measure("populateSlide(0): ", () => presenter.populateSlide(0));
+  });
 
-	console.log("Running...");
+  console.log("Running...");
 }
-
-// const render: AnimationsRenderType = (
-//   {
-//     scrollBody,
-//     translate,
-//     location,
-//     offsetLocation,
-//     previousLocation,
-//     scrollLooper,
-//     slideLooper,
-//     dragHandler,
-//     animation,
-//     eventHandler,
-//     scrollBounds,
-//     options: { loop }
-//   },
-//   alpha
-// ) => {
-//   const shouldSettle = scrollBody.settled()
-//   const withinBounds = !scrollBounds.shouldConstrain()
-//   const hasSettled = loop ? shouldSettle : shouldSettle && withinBounds
-//   const hasSettledAndIdle = hasSettled && !dragHandler.pointerDown()
-
-//   if (hasSettledAndIdle) animation.stop()
-
-//   const interpolatedLocation =
-//     location.get() * alpha + previousLocation.get() * (1 - alpha)
-
-//   offsetLocation.set(interpolatedLocation)
-
-//   if (loop) {
-//     scrollLooper.loop(scrollBody.direction())
-//     slideLooper.loop()
-//   }
-
-//   translate.to(offsetLocation.get())
-
-//   if (hasSettledAndIdle) eventHandler.emit('settle')
-//   if (!hasSettled) eventHandler.emit('scroll')
-// }

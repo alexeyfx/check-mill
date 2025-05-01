@@ -13,30 +13,23 @@ export class CheckboxFactory {
 
   constructor(ownerDocument: Document) {
     this.document = ownerDocument;
-
     this.prefabricate();
   }
 
   /**
    * Creates a single checkbox by cloning the cached template.
+   * @param top - top position (in px).
+   * @param left - left position (in px).
    * @param checked - Optional boolean to set the checkbox state.
    * @returns A cloned and optionally checked HTMLInputElement.
    */
-  public create(checked: boolean = false): HTMLInputElement {
+  public create(top: number, left: number, checked: boolean = false): HTMLInputElement {
     const checkbox = this.template.cloneNode(true) as HTMLInputElement;
     checkbox.checked = checked;
-    return checkbox;
-  }
+    checkbox.style.top = `${top}px`;
+    checkbox.style.left = `${left}px`;
 
-  /**
-   * Yields a sequence of cloned checkboxes.
-   * All checkboxes are unchecked by default.
-   * @param length - Number of checkboxes to generate.
-   */
-  public *batch(length: number): IterableIterator<HTMLInputElement> {
-    for (let i = 0; i < length; i++) {
-      yield this.create();
-    }
+    return checkbox;
   }
 
   /**
@@ -47,6 +40,7 @@ export class CheckboxFactory {
     const checkbox = this.document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.classList.add("_int_checkbox");
+    checkbox.style.position = "absolute";
     this.template = checkbox;
   }
 }

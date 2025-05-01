@@ -43,13 +43,19 @@ body {
 }
 
 table._int_table {
-  border-spacing: 0px;
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
 }
 
 td._int_td {
   width: calc(var(--checkbox-size) + var(--cell-padding));
   padding: var(--cell-padding);
   aspect-ratio: 1;
+  margin: 0;
+  border: 0;
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 input[type="checkbox"]._int_checkbox {
