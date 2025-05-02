@@ -77,8 +77,8 @@ export class Layout implements LayoutType {
     this.columns            = this.calculateColumns();
     this.slideWidth         = this.calculateSlideWidth();
     this.slideHeight        = this.calculateSlideHeight();
-    this.ghostSlides        = this.calculateGhostSlides();
     this.materializedSlides = this.calculateMaterializedSlides();
+    this.ghostSlides        = this.calculateGhostSlides();
     this.totalSlides        = this.calculateTotalSlides();
     this.contentWidth       = this.calculateContentWidth();
     this.contentHeight      = this.calculateContentHeight();
