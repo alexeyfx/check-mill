@@ -18,16 +18,15 @@ export class CheckboxFactory {
 
   /**
    * Creates a single checkbox by cloning the cached template.
-   * @param top - top position (in px).
-   * @param left - left position (in px).
+   * @param x - left position.
+   * @param y - top position.
    * @param checked - Optional boolean to set the checkbox state.
    * @returns A cloned and optionally checked HTMLInputElement.
    */
-  public create(top: number, left: number, checked: boolean = false): HTMLInputElement {
+  public create(x: number, y: number, checked: boolean = false): HTMLInputElement {
     const checkbox = this.template.cloneNode(true) as HTMLInputElement;
     checkbox.checked = checked;
-    checkbox.style.top = `${top}px`;
-    checkbox.style.left = `${left}px`;
+    checkbox.style.transform = `translate(${x}px, ${y}px)`;
 
     return checkbox;
   }

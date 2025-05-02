@@ -64,29 +64,28 @@ export class Presenter {
       const layoutFn = this.bindLayoutFn();
 
       for (let i = 0; i < totalCells; i += 1) {
-        const [top, left] = layoutFn(i);
-        const checkbox = this.checkboxFactory.create(top, left);
+        const [x, y] = layoutFn(i);
+        const checkbox = this.checkboxFactory.create(x, y);
         fragment.appendChild(checkbox);
       }
     }
 
-    target.replaceChildren(fragment);
+    target.replaceChildren(fragment.cloneNode(true));
   }
 
   public bindLayoutFn(): (index: number) => [number, number] {
-    const { columns, checkboxSize, slidePadding, gridGap } = this.layoutMetrics;
+    const { columns, checkboxSize, gridGap } = this.layoutMetrics;
 
-    const [paddingLeft, paddingTop] = slidePadding;
     const cellSize = checkboxSize + gridGap;
 
     return (index: number): [number, number] => {
       const column = index % columns;
       const row = Math.floor(index / columns);
 
-      const left = paddingLeft + column * cellSize;
-      const top = paddingTop + row * cellSize;
+      const x = column * cellSize;
+      const y = row * cellSize;
 
-      return [top, left];
+      return [x, y];
     };
   }
 
