@@ -9,6 +9,7 @@ import {
   Layout,
   LayoutConfigBuilder,
   Presenter,
+  ScrollLooper,
 } from "./components";
 import { measure, query } from "./utils";
 
@@ -28,13 +29,28 @@ export async function main() {
 
   const translate = Translate(axis, container);
 
+  const layoutBuilder = new LayoutConfigBuilder({
+    gridGap: 8,
+    checkboxSize: 24,
+    slidePadding: [12, 12],
+    contentGap: 12,
+    viewportRect: root.getBoundingClientRect(),
+    slideMinClampedHeight: 300,
+    slideMaxHeightPercent: 70,
+    slideMaxWidth: 1024,
+    ghostSlidesMult: 3,
+  });
+
+  const layout = new Layout(layoutBuilder.build());
+
+  const scrollLooper = new ScrollLooper(location, layout.metrics());
+
   const animations = Animations(
     document,
     window,
     () => acceleration.seek(),
     (alpha) => {
       const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
-
       if (hasSettledAndIdle) {
         animations.stop();
       }
@@ -43,6 +59,8 @@ export async function main() {
         location.current.get() * alpha + location.previous.get() * (1 - alpha);
 
       location.offset.set(interpolatedLocation);
+      scrollLooper.loop(acceleration.direction());
+
       translate.to(location.offset.get());
     }
   );
@@ -53,19 +71,6 @@ export async function main() {
 
   await Promise.all([drag, wheel, animations].map((m) => m.init()));
 
-  const layoutBuilder = new LayoutConfigBuilder({
-    gridGap: 4,
-    checkboxSize: 24,
-    slidePadding: [6, 6],
-    contentGap: 8,
-    viewportRect: root.getBoundingClientRect(),
-    slideMinClampedHeight: 300,
-    slideMaxHeightPercent: 70,
-    slideMaxWidth: 1024,
-    ghostSlidesMult: 3,
-  });
-
-  const layout = new Layout(layoutBuilder.build());
   const presenter = new Presenter(document, container, layout.metrics());
 
   presenter.initializePlaceholders();
@@ -75,7 +80,7 @@ export async function main() {
 
   setTimeout(() => {
     measure("populateSlide(0): ", () => presenter.populateSlide(0));
-  });
+  }, 100);
 
   console.log("Running...");
 }

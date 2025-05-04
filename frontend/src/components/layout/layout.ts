@@ -166,7 +166,7 @@ export class Layout implements LayoutType {
     const spacing = contentGap * (this.totalSlides - 1);
     const slidesHeight = this.totalSlides * this.slideHeight;
 
-    return spacing * slidesHeight;
+    return spacing + slidesHeight;
   }
 
   private readVerticalPadding(): number {

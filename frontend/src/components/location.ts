@@ -6,6 +6,7 @@ export interface LocationType {
   readonly previous: Vector1DType;
   readonly offset: Vector1DType;
   readonly target: Vector1DType;
+  forEach(mapFn: (vector: Vector1DType) => void): void;
 }
 
 /**
@@ -32,10 +33,19 @@ export function Location(initial: number = 0) {
    */
   const target = Vector1D(current.get());
 
+  const vectors = [current, previous, offset, target];
+
+  function forEach(mapFn: (vector: Vector1DType) => void): void {
+    for (const vector of vectors) {
+      mapFn(vector);
+    }
+  }
+
   return {
     current,
     previous,
     offset,
     target,
+    forEach,
   };
 }

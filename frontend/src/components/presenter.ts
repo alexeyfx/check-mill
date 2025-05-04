@@ -70,7 +70,7 @@ export class Presenter {
       }
     }
 
-    target.replaceChildren(fragment.cloneNode(true));
+    target.children[0].replaceChildren(fragment.cloneNode(true));
   }
 
   public bindLayoutFn(): (index: number) => [number, number] {
@@ -106,7 +106,7 @@ export class Presenter {
    */
   public emptySlide(index: number): void {
     const target = this.slides[index];
-    target?.replaceChildren();
+    target.children[0]?.replaceChildren();
   }
 
   /**
