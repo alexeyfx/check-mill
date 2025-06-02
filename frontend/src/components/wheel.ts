@@ -1,22 +1,17 @@
-import type { EventReader } from "../primitives";
-import { DisposableStore, event, TypedEvent } from "../primitives";
+import { DisposableStore, event } from "../primitives";
 import { prevent, revert } from "../utils";
 import type { Component } from "./component";
-import type { AccelerationType } from "./acceleration";
-import type { AnimationsType } from "./animations";
 import type { AxisType } from "./axis";
 import type { LocationType } from "./location";
+import { RenderLoopType } from "./render-loop";
 
-export interface WheelType extends Component {
-  wheeled: EventReader<WheelEvent>;
-}
+export interface WheelType extends Component {}
 
 export function Wheel(
   root: HTMLElement,
-  acceleration: AccelerationType,
-  animations: AnimationsType,
   axis: AxisType,
-  location: LocationType
+  location: LocationType,
+  renderLoop: RenderLoopType
 ): WheelType {
   /**
    * Disposable store for managing cleanup functions.
@@ -24,16 +19,11 @@ export function Wheel(
   const disposable = DisposableStore();
 
   /**
-   * Returns a reader for the wheel event stream.
-   */
-  const wheeled = new TypedEvent<WheelEvent>();
-
-  /**
    * @internal
    * Component lifecycle method.
    */
   function init(): Promise<void> {
-    disposable.pushStatic(wheeled.clear, event(root, "wheel", onWheel));
+    disposable.pushStatic(event(root, "wheel", onWheel, { passive: true }));
 
     return Promise.resolve();
   }
@@ -42,11 +32,15 @@ export function Wheel(
    * Handles wheel event.
    */
   function onWheel(event: WheelEvent) {
+    const { previous, current, velocity } = location;
     const delta = readPoint(event);
 
-    acceleration.useFriction(0.3).useDuration(0.75);
-    animations.start();
-    location.target.add(revert(delta));
+    previous.set(current);
+    current.add(revert(delta));
+    velocity.set(0);
+
+    renderLoop.start();
+
     prevent(event, true);
   }
 
@@ -70,6 +64,5 @@ export function Wheel(
   return {
     init,
     destroy,
-    wheeled,
   };
 }

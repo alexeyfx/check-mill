@@ -1,6 +1,4 @@
 import {
-  Acceleration,
-  Animations,
   Axis,
   Drag,
   Wheel,
@@ -11,7 +9,8 @@ import {
   Presenter,
   ScrollLooper,
 } from "./components";
-import { measure, query } from "./utils";
+import { RenderLoop } from "./components/render-loop";
+import { query } from "./utils";
 
 export async function main() {
   /** Application root element */
@@ -24,8 +23,6 @@ export async function main() {
   const axis = Axis("y");
 
   const location = Location(0);
-
-  const acceleration = Acceleration(location, 0, 0.68);
 
   const translate = Translate(axis, container);
 
@@ -43,44 +40,54 @@ export async function main() {
 
   const layout = new Layout(layoutBuilder.build());
 
-  const scrollLooper = new ScrollLooper(location, layout.metrics());
+  const scrollLooper = ScrollLooper(location, layout.metrics());
 
-  const animations = Animations(
-    document,
-    window,
-    () => acceleration.seek(),
-    (alpha) => {
-      const hasSettledAndIdle = acceleration.settled() && !drag.interacting();
-      if (hasSettledAndIdle) {
-        animations.stop();
-      }
+  const renderLoop = RenderLoop(document, window, update, render);
 
-      const interpolatedLocation =
-        location.current.get() * alpha + location.previous.get() * (1 - alpha);
+  const drag = Drag(root, axis, location, renderLoop);
 
-      location.offset.set(interpolatedLocation);
-      scrollLooper.loop(acceleration.direction());
-
-      translate.to(location.offset.get());
-    }
-  );
-
-  const drag = Drag(root, location, animations, axis, acceleration);
-
-  const wheel = Wheel(root, acceleration, animations, axis, location);
-
-  await Promise.all([drag, wheel, animations].map((m) => m.init()));
+  const wheel = Wheel(root, axis, location, renderLoop);
 
   const presenter = new Presenter(document, container, layout.metrics());
 
+  await Promise.all([drag, wheel].map((m) => m.init()));
+
   presenter.initializePlaceholders();
 
-  measure("populateSlide(1): ", () => presenter.populateSlide(1));
-  measure("populateSlide(2): ", () => presenter.populateSlide(2));
-
-  setTimeout(() => {
-    measure("populateSlide(0): ", () => presenter.populateSlide(0));
-  }, 100);
+  presenter.populateSlide(2);
 
   console.log("Running...");
+
+  function update(_t: number, dt: number): void {
+    const { velocity, previous, current, direction } = location;
+    const integrated = applyFriction(velocity.get(), 0.75, dt);
+    const displacement = current.get() + integrated - previous.get();
+
+    velocity.set(integrated);
+    previous.set(current);
+    current.add(integrated);
+    direction.set(Math.sign(displacement));
+
+    return;
+  }
+
+  function render(alpha: number): void {
+    const { current, previous, velocity, direction } = location;
+    const isSettled = Math.abs(velocity.get()) < 0.01;
+    const interpolated = current.get() * alpha + previous.get() * (1.0 - alpha);
+
+    if (isSettled || drag.interacting()) {
+      renderLoop.stop();
+    }
+
+    location.offset.set(interpolated);
+    scrollLooper.loop(direction.get());
+    translate.to(interpolated);
+  }
+
+  function applyFriction(velocity: number, friction: number, dt: number): number {
+    const decay = 1 - Math.pow(1 - friction, dt / 1000);
+    const next = velocity * (1 - decay);
+    return next;
+  }
 }
