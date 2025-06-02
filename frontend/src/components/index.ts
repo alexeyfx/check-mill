@@ -1,5 +1,3 @@
-export * from "./acceleration";
-export * from "./animations";
 export * from "./axis";
 export * from "./component";
 export * from "./drag";
