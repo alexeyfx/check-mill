@@ -1,10 +1,9 @@
 import { DisposableStore, event } from "../primitives";
 import { prevent } from "../utils";
-import type { AccelerationType } from "./acceleration";
-import type { AnimationsType } from "./animations";
 import type { AxisType } from "./axis";
 import type { Component } from "./component";
 import type { LocationType } from "./location";
+import { RenderLoopType } from "./render-loop";
 
 /**
  * If the user stops dragging for this duration while keeping the pointer down,
@@ -22,10 +21,9 @@ export interface DragType extends Component {
  */
 export function Drag(
   root: HTMLElement,
-  location: LocationType,
-  animations: AnimationsType,
   axis: AxisType,
-  acceleration: AccelerationType
+  location: LocationType,
+  renderLoop: RenderLoopType
 ): DragType {
   /**
    * First recorded pointer event in the drag interaction.
@@ -66,6 +64,15 @@ export function Drag(
   }
 
   /**
+   * @internal
+   * Component lifecycle method.
+   */
+  function destroy(): Promise<void> {
+    disposable.flushAll();
+    return Promise.resolve();
+  }
+
+  /**
    * Returns true if any pointer event active;
    */
   function interacting(): boolean {
@@ -81,8 +88,7 @@ export function Drag(
     preventClick = event.buttons === 0;
     isInteracting = true;
 
-    location.target.set(location.current);
-    acceleration.useFriction(0).useDuration(0);
+    location.velocity.set(0);
     addDragEvents();
   }
 
@@ -90,6 +96,7 @@ export function Drag(
    * Handles pointer move event.
    */
   function onPointerMove(event: PointerEvent): void {
+    const { current } = location;
     const diff = diffCoord(event);
     const expired = diffTime(event) > LOG_INTERVAL;
 
@@ -98,9 +105,8 @@ export function Drag(
       startEvent = event;
     }
 
-    acceleration.useFriction(0.3).useDuration(0.75);
-    animations.start();
-    location.target.add(axis.direction(diff));
+    current.add(axis.direction(diff));
+    renderLoop.start();
     prevent(event, true);
   }
 
@@ -110,14 +116,10 @@ export function Drag(
   function onPointerUp(event: PointerEvent): void {
     isInteracting = false;
 
-    const velocity = computeVelocity(event);
-    const destination = computeDestination(velocity);
-    const speed = Math.abs(velocity);
+    const acceleration = computeAcceleration(event);
 
-    acceleration.useFriction(0.3).useDuration(speed);
-    location.target.set(destination);
-    animations.start();
-
+    location.velocity.set(10 * acceleration);
+    renderLoop.start();
     disposable.flushTemporal();
   }
 
@@ -134,7 +136,7 @@ export function Drag(
 
   function addDragEvents(): void {
     disposable.pushTemporal(
-      event(root, "pointermove", onPointerMove),
+      event(root, "pointermove", onPointerMove, { passive: false }),
       event(root, "pointerup", onPointerUp),
       event(root, "pointerout", onPointerUp),
       event(root, "pointerleave", onPointerUp),
@@ -142,7 +144,7 @@ export function Drag(
     );
   }
 
-  function computeVelocity(event: PointerEvent): number {
+  function computeAcceleration(event: PointerEvent): number {
     if (!startEvent || !lastEvent) {
       return 0;
     }
@@ -150,14 +152,10 @@ export function Drag(
     const diffDrag = readPoint(lastEvent) - readPoint(startEvent);
     const diffTime = readTime(event) - readTime(startEvent);
     const expired = readTime(event) - readTime(startEvent) > LOG_INTERVAL;
-    const velocity = diffDrag / diffTime;
-    const isFlick = diffTime && !expired && Math.abs(velocity) > 0.1;
+    const acceleration = diffDrag / diffTime;
+    const isFlick = diffTime && !expired && Math.abs(acceleration) > 0.01;
 
-    return isFlick ? velocity : 0;
-  }
-
-  function computeDestination(velocity: number): number {
-    return location.current.get() + velocity * 500;
+    return isFlick ? acceleration : 0;
   }
 
   /**
@@ -187,15 +185,6 @@ export function Drag(
    */
   function readTime(event: Event): number {
     return event.timeStamp;
-  }
-
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function destroy(): Promise<void> {
-    disposable.flushAll();
-    return Promise.resolve();
   }
 
   return {

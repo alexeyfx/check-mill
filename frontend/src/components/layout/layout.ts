@@ -163,7 +163,7 @@ export class Layout implements LayoutType {
 
   private calculateContentHeight(): number {
     const { contentGap } = this.layoutConfig;
-    const spacing = contentGap * (this.totalSlides - 1);
+    const spacing = contentGap * (this.totalSlides - 2);
     const slidesHeight = this.totalSlides * this.slideHeight;
 
     return spacing + slidesHeight;

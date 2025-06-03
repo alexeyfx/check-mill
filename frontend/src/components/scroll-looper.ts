@@ -1,52 +1,50 @@
 import type { LocationType } from "./location";
 import type { LayoutMetrics } from "./layout";
 
-export class ScrollLooper {
-  private readonly location: LocationType;
+export interface ScrollLooperType {
+  loop(): void;
+}
 
-  private readonly metrics: LayoutMetrics;
+export function ScrollLooper(location: LocationType, metrics: LayoutMetrics): ScrollLooperType {
+  const jointSafety = 0.1;
 
-  private readonly min: number;
+  let min: number = metrics.slideHeight + metrics.contentGap - metrics.contentHeight + jointSafety;
 
-  private readonly max: number;
+  let max: number = jointSafety;
 
-  constructor(location: LocationType, metrics: LayoutMetrics) {
-    this.location = location;
-    this.metrics = metrics;
+  function loop(): void {
+    const direction = location.direction.get();
 
-    const jointSafety = 0.1;
-    const { contentHeight, slideHeight, contentGap } = metrics;
-    this.min = slideHeight + contentGap - contentHeight + jointSafety;
-    this.max = 0 + jointSafety;
-  }
-
-  public loop(direction: number): void {
-    if (!this.shouldLoop(direction)) {
+    if (!shouldLoop(direction)) {
       return;
     }
 
-    const distance = -1 * direction * this.metrics.contentHeight;
-    this.location.forEach((vector) => vector.add(distance));
+    const distance = -1 * direction * metrics.contentHeight;
+    location.forEach((vector) => vector.add(distance));
   }
 
-  private shouldLoop(direction: number): boolean {
-    const offset = this.location.offset.get();
+  function shouldLoop(direction: number): boolean {
+    const offset = location.offset.get();
 
     switch (direction) {
       case -1:
-        return this.reachedMin(offset);
+        return reachedMin(offset);
       case 1:
-        return this.reachedMax(offset);
+        return reachedMax(offset);
     }
 
     return false;
   }
 
-  private reachedMax(offset: number): boolean {
-    return offset > this.max;
+  function reachedMax(offset: number): boolean {
+    return offset > max;
   }
 
-  private reachedMin(offset: number): boolean {
-    return offset < this.min;
+  function reachedMin(offset: number): boolean {
+    return offset < min;
   }
+
+  return {
+    loop,
+  };
 }
