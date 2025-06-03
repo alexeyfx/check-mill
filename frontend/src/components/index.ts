@@ -4,6 +4,7 @@ export * from "./drag";
 export * from "./layout";
 export * from "./presenter";
 export * from "./scroll-looper";
+export * from "./slides-looper";
 export * from "./location";
 export * from "./translate";
 export * from "./viewport";

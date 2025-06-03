@@ -8,6 +8,8 @@ import {
   LayoutConfigBuilder,
   Presenter,
   ScrollLooper,
+  SlidesLooper,
+  Viewport,
 } from "./components";
 import { RenderLoop } from "./components/render-loop";
 import { query } from "./utils";
@@ -38,7 +40,11 @@ export async function main() {
     ghostSlidesMult: 3,
   });
 
+  const viewport = Viewport(root);
+
   const layout = new Layout(layoutBuilder.build());
+
+  const slidesLooper = SlidesLooper(location, layout.metrics(), axis, viewport);
 
   const scrollLooper = ScrollLooper(location, layout.metrics());
 
@@ -72,7 +78,7 @@ export async function main() {
   }
 
   function render(alpha: number): void {
-    const { current, previous, velocity, direction } = location;
+    const { current, previous, velocity } = location;
     const isSettled = Math.abs(velocity.get()) < 0.01;
     const interpolated = current.get() * alpha + previous.get() * (1.0 - alpha);
 
@@ -81,7 +87,8 @@ export async function main() {
     }
 
     location.offset.set(interpolated);
-    scrollLooper.loop(direction.get());
+    scrollLooper.loop();
+    slidesLooper.loop();
     translate.to(interpolated);
   }
 

@@ -2,7 +2,7 @@ import type { LocationType } from "./location";
 import type { LayoutMetrics } from "./layout";
 
 export interface ScrollLooperType {
-  loop(direction: number): void;
+  loop(): void;
 }
 
 export function ScrollLooper(location: LocationType, metrics: LayoutMetrics): ScrollLooperType {
@@ -12,7 +12,9 @@ export function ScrollLooper(location: LocationType, metrics: LayoutMetrics): Sc
 
   let max: number = jointSafety;
 
-  function loop(direction: number): void {
+  function loop(): void {
+    const direction = location.direction.get();
+
     if (!shouldLoop(direction)) {
       return;
     }
