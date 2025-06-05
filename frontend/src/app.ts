@@ -24,7 +24,7 @@ export async function main() {
   /** Scroll direction component */
   const axis = Axis("y");
 
-  const location = Location(0);
+  const location = Location();
 
   const translate = Translate(axis, container);
 
@@ -44,8 +44,6 @@ export async function main() {
 
   const layout = new Layout(layoutBuilder.build());
 
-  const slidesLooper = SlidesLooper(location, layout.metrics(), axis, viewport);
-
   const scrollLooper = ScrollLooper(location, layout.metrics());
 
   const renderLoop = RenderLoop(document, window, update, render);
@@ -55,10 +53,11 @@ export async function main() {
   const wheel = Wheel(root, axis, location, renderLoop);
 
   const presenter = new Presenter(document, container, layout.metrics());
+  presenter.initializePlaceholders();
+
+  const slidesLooper = SlidesLooper(axis, viewport, layout.metrics(), location, presenter.slides());
 
   await Promise.all([drag, wheel].map((m) => m.init()));
-
-  presenter.initializePlaceholders();
 
   presenter.populateSlide(2);
 

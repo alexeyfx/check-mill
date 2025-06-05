@@ -23,7 +23,7 @@ export function Wheel(
    * Component lifecycle method.
    */
   function init(): Promise<void> {
-    disposable.pushStatic(event(root, "wheel", onWheel, { passive: true }));
+    disposable.pushStatic(event(root, "wheel", onWheel));
 
     return Promise.resolve();
   }

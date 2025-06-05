@@ -6,29 +6,26 @@
 
 body {
   font-family: sans-serif;
+  width: 100%;
   height: 100vh;
   overflow: hidden;
 }
 
 #root {
   width: 100%;
-  width: 100%;
-  min-height: 100%;
-  background-color: #e5e5f7;
+  height: 100%;
   opacity: 0.8;
-  background: radial-gradient(
-      circle,
-      transparent 20%,
-      #e5e5f7 20%,
-      #e5e5f7 80%,
-      transparent 80%,
-      transparent
-    ),
-    radial-gradient(circle, transparent 20%, #e5e5f7 20%, #e5e5f7 80%, transparent 80%, transparent)
-      25px 25px,
+  background-color: #e5e5f7;
+  background:
+    radial-gradient(circle, transparent 20%, #e5e5f7 20%, #e5e5f7 80%, transparent 80%, transparent),
+    radial-gradient(circle, transparent 20%, #e5e5f7 20%, #e5e5f7 80%, transparent 80%, transparent) 25px 25px,
     linear-gradient(#444cf7 2px, transparent 2px) 0 -1px,
     linear-gradient(90deg, #444cf7 2px, #e5e5f7 2px) -1px 0;
-  background-size: 50px 50px, 50px 50px, 25px 25px, 25px 25px;
+  background-size:
+    50px 50px,
+    50px 50px,
+    25px 25px,
+    25px 25px;
 }
 
 .container {
@@ -36,13 +33,15 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: var(--content-gap);
   min-height: 100%;
   user-select: none;
   touch-action: none;
+  isolation: isolate;
 }
 
 ._int_slide {
+  position: relative;
   width: var(--slide-width);
   height: var(--slide-height);
   background: rgba(255, 255, 255, 0.25);
@@ -51,7 +50,6 @@ body {
   -webkit-backdrop-filter: blur(4.5px);
   border-radius: 10px;
   outline: 1px inset rgba(255, 255, 255, 0.18);
-  content-visibility: auto;
 }
 
 ._int_container {

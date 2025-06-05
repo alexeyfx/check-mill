@@ -12,7 +12,7 @@ const enum CSSVariables {
 }
 
 export class Presenter {
-  private readonly slides: HTMLElement[] = [];
+  private readonly _slides: HTMLElement[] = [];
 
   private readonly fragment: DocumentFragment;
 
@@ -47,7 +47,7 @@ export class Presenter {
     this.destroyAllSlides();
 
     for (const slide of this.slideFactory.batch(totalSlides)) {
-      this.slides.push(slide);
+      this._slides.push(slide);
       this.root.appendChild(slide);
     }
   }
@@ -57,7 +57,7 @@ export class Presenter {
    */
   public populateSlide(index: number): void {
     const { totalCells } = this.layoutMetrics;
-    const target = this.slides[index];
+    const target = this._slides[index];
     const fragment = this.fragment;
 
     if (!this.fragment.hasChildNodes()) {
@@ -89,12 +89,16 @@ export class Presenter {
     };
   }
 
+  public slides(): HTMLElement[] {
+    return [...this._slides];
+  }
+
   /**
    * Synchronizes a slide with the expected filled/empty state.
    */
   public syncSlide(index: number): void {
     const {} = this.layoutMetrics;
-    const target = this.slides[index];
+    const target = this._slides[index];
 
     if (!target) {
       return;
@@ -105,7 +109,7 @@ export class Presenter {
    * Empties a slide, reverting it back to a placeholder.
    */
   public emptySlide(index: number): void {
-    const target = this.slides[index];
+    const target = this._slides[index];
     target.children[0]?.replaceChildren();
   }
 
@@ -114,7 +118,7 @@ export class Presenter {
    */
   public destroyAllSlides(): void {
     this.root.replaceChildren();
-    this.slides.length = 0;
+    this._slides.length = 0;
   }
 
   /**
