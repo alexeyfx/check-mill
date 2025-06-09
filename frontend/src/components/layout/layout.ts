@@ -48,7 +48,8 @@ export class Layout implements LayoutType {
       contentHeight,
     } = this;
 
-    const { checkboxSize, gridGap, slidePadding, contentGap } = this.layoutConfig;
+    const { checkboxSize, gridGap, slidePadding, containerGap, containerPadding } =
+      this.layoutConfig;
 
     this.cachedMetrics = {
       checkboxSize,
@@ -62,7 +63,8 @@ export class Layout implements LayoutType {
       totalSlides,
       ghostSlides,
       materializedSlides,
-      contentGap,
+      containerGap,
+      containerPadding,
       contentWidth,
       contentHeight,
     };
@@ -93,11 +95,14 @@ export class Layout implements LayoutType {
   }
 
   private calculateColumns(): number {
-    const { checkboxSize, gridGap, viewportRect, slideMaxWidth } = this.layoutConfig;
-    const availableWidth = Math.min(
-      viewportRect.width - 2 * this.readHorizontalPadding(),
-      slideMaxWidth - 2 * this.readHorizontalPadding()
-    );
+    const { checkboxSize, gridGap, viewportRect, slideMaxWidth, slidePadding, containerPadding } =
+      this.layoutConfig;
+    const viewportBasedWidth =
+      viewportRect.width -
+      2 * this.readHorizontalPadding(containerPadding) -
+      2 * this.readHorizontalPadding(slidePadding);
+    const maxWidthBasedWidth = slideMaxWidth - 2 * this.readHorizontalPadding(slidePadding);
+    const availableWidth = Math.min(viewportBasedWidth, maxWidthBasedWidth);
 
     let count = 1;
     while ((count + 1) * checkboxSize + count * gridGap <= availableWidth) {
@@ -108,8 +113,8 @@ export class Layout implements LayoutType {
   }
 
   private calculateRows(): number {
-    const { checkboxSize, gridGap } = this.layoutConfig;
-    const availableHeight = this.clampedHeight - 2 * this.readVerticalPadding();
+    const { checkboxSize, gridGap, slidePadding } = this.layoutConfig;
+    const availableHeight = this.clampedHeight - 2 * this.readVerticalPadding(slidePadding);
 
     let count = 1;
     while ((count + 1) * checkboxSize + count * gridGap <= availableHeight) {
@@ -120,8 +125,8 @@ export class Layout implements LayoutType {
   }
 
   private calculateSlideWidth(): number {
-    const { checkboxSize, gridGap } = this.layoutConfig;
-    const padding = 2 * this.readHorizontalPadding();
+    const { checkboxSize, gridGap, slidePadding } = this.layoutConfig;
+    const padding = 2 * this.readHorizontalPadding(slidePadding);
     const gap = (this.columns - 1) * gridGap;
     const content = this.columns * checkboxSize;
 
@@ -129,8 +134,8 @@ export class Layout implements LayoutType {
   }
 
   private calculateSlideHeight(): number {
-    const { checkboxSize, gridGap } = this.layoutConfig;
-    const padding = 2 * this.readVerticalPadding();
+    const { checkboxSize, gridGap, slidePadding } = this.layoutConfig;
+    const padding = 2 * this.readVerticalPadding(slidePadding);
     const gap = (this.rows - 1) * gridGap;
     const content = this.rows * checkboxSize;
 
@@ -162,18 +167,19 @@ export class Layout implements LayoutType {
   }
 
   private calculateContentHeight(): number {
-    const { contentGap } = this.layoutConfig;
-    const spacing = contentGap * (this.totalSlides - 1);
+    const { containerGap, containerPadding } = this.layoutConfig;
+    const gapSpacing = containerGap * (this.totalSlides - 1);
+    const paddingSpacing = this.readVerticalPadding(containerPadding) * 2;
     const slidesHeight = this.totalSlides * this.slideHeight;
 
-    return spacing + slidesHeight;
+    return gapSpacing + paddingSpacing + slidesHeight;
   }
 
-  private readVerticalPadding(): number {
-    return this.layoutConfig.slidePadding[1];
+  private readVerticalPadding(rule: [number, number]): number {
+    return rule[1];
   }
 
-  private readHorizontalPadding(): number {
-    return this.layoutConfig.slidePadding[0];
+  private readHorizontalPadding(rule: [number, number]): number {
+    return rule[0];
   }
 }

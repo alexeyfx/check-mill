@@ -1,4 +1,3 @@
-import { revert } from "../utils";
 import { AxisType } from "./axis";
 import { LayoutMetrics } from "./layout";
 import { LocationType } from "./location";
@@ -43,7 +42,7 @@ export function SlidesLooper(
 ): SlidesLooperType {
   const translates = slides.map((slide) => Translate(axis, slide));
 
-  const translateOffset = metrics.contentHeight + metrics.contentGap;
+  const translateOffset = metrics.contentHeight + metrics.containerGap;
 
   const viewportHeight = viewport.measure().height;
 
@@ -59,12 +58,10 @@ export function SlidesLooper(
 
     if (between(leftEdge, 0, viewportHeight)) {
       currentOperation = shiftRight;
-      console.log("last");
     }
 
     if (between(rightedge, 0, viewportHeight)) {
       currentOperation = shiftLeft;
-      console.log("first");
     }
 
     if (currentOperation !== lastOperation) {

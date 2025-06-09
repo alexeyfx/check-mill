@@ -8,7 +8,8 @@ const enum CSSVariables {
   SLIDE_WIDTH = "--slide-width",
   SLIDE_HEIGHT = "--slide-height",
   SLIDE_PADDING = "--slide-padding",
-  CONTENT_GAP = "--content-gap",
+  CONTAINER_GAP = "--container-gap",
+  CONTAINER_PADDING = "--container-padding",
 }
 
 export class Presenter {
@@ -126,8 +127,15 @@ export class Presenter {
    */
   private writeVariables(): void {
     const { style } = this.root;
-    const { checkboxSize, gridGap, contentGap, slidePadding, slideHeight, slideWidth } =
-      this.layoutMetrics;
+    const {
+      checkboxSize,
+      gridGap,
+      containerGap,
+      containerPadding,
+      slidePadding,
+      slideHeight,
+      slideWidth,
+    } = this.layoutMetrics;
 
     this.root.setAttribute("style", "");
 
@@ -136,6 +144,7 @@ export class Presenter {
     style.setProperty(CSSVariables.SLIDE_PADDING, px(slidePadding));
     style.setProperty(CSSVariables.SLIDE_WIDTH, px(slideWidth));
     style.setProperty(CSSVariables.SLIDE_HEIGHT, px(slideHeight));
-    style.setProperty(CSSVariables.CONTENT_GAP, px(contentGap));
+    style.setProperty(CSSVariables.CONTAINER_GAP, px(containerGap));
+    style.setProperty(CSSVariables.CONTAINER_PADDING, px(containerPadding));
   }
 }

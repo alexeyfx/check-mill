@@ -3,7 +3,8 @@ export type LayoutConfig = {
   checkboxSize:          number;
   gridGap:               number;
   slidePadding:          [number, number];
-  contentGap:            number;
+  containerGap:          number;
+  containerPadding:      [number, number];
   ghostSlidesMult:       number;
   viewportRect:          DOMRect;
   slideMaxWidth:         number;
@@ -13,7 +14,7 @@ export type LayoutConfig = {
 
 type CommonLayoutProperties = Pick<
   LayoutConfig,
-  "slidePadding" | "contentGap" | "gridGap" | "checkboxSize"
+  "slidePadding" | "containerGap" | "containerPadding" | "gridGap" | "checkboxSize"
 >;
 
 // prettier-ignore
