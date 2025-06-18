@@ -1,6 +1,6 @@
 import { AxisType } from "./axis";
 import { LayoutMetrics } from "./layout";
-import { LocationType } from "./location";
+import { ScrollMotionType } from "./scroll-motion";
 import { Translate } from "./translate";
 import { ViewportType } from "./viewport";
 
@@ -37,7 +37,7 @@ export function SlidesLooper(
   axis: AxisType,
   viewport: ViewportType,
   metrics: LayoutMetrics,
-  location: LocationType,
+  motion: ScrollMotionType,
   slides: HTMLElement[]
 ): SlidesLooperType {
   const translates = slides.map((slide) => Translate(axis, slide));
@@ -51,7 +51,7 @@ export function SlidesLooper(
   let lastOperation: VoidFunction = resetShift;
 
   function loop(): void {
-    const leftEdge = location.offset.get();
+    const leftEdge = motion.offset.get();
     const rightedge = leftEdge + metrics.contentHeight;
 
     let currentOperation: VoidFunction = resetShift;

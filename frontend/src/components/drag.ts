@@ -2,7 +2,7 @@ import { DisposableStore, event } from "../primitives";
 import { prevent } from "../utils";
 import type { AxisType } from "./axis";
 import type { Component } from "./component";
-import type { LocationType } from "./location";
+import type { ScrollMotionType } from "./scroll-motion";
 import { RenderLoopType } from "./render-loop";
 
 /**
@@ -22,7 +22,7 @@ export interface DragType extends Component {
 export function Drag(
   root: HTMLElement,
   axis: AxisType,
-  location: LocationType,
+  motion: ScrollMotionType,
   renderLoop: RenderLoopType
 ): DragType {
   /**
@@ -88,7 +88,7 @@ export function Drag(
     preventClick = event.buttons === 0;
     isInteracting = true;
 
-    location.velocity.set(0);
+    motion.velocity.set(0);
     addDragEvents();
   }
 
@@ -96,7 +96,6 @@ export function Drag(
    * Handles pointer move event.
    */
   function onPointerMove(event: PointerEvent): void {
-    const { current } = location;
     const diff = diffCoord(event);
     const expired = diffTime(event) > LOG_INTERVAL;
 
@@ -105,7 +104,7 @@ export function Drag(
       startEvent = event;
     }
 
-    current.add(axis.direction(diff));
+    motion.current.add(axis.direction(diff));
     renderLoop.start();
     prevent(event, true);
   }
@@ -114,11 +113,11 @@ export function Drag(
    * Handles pointer up event.
    */
   function onPointerUp(event: PointerEvent): void {
-    isInteracting = false;
-
     const acceleration = computeAcceleration(event);
 
-    location.velocity.set(10 * acceleration);
+    isInteracting = false;
+
+    motion.velocity.set(10 * acceleration);
     renderLoop.start();
     disposable.flushTemporal();
   }

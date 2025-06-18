@@ -2,15 +2,15 @@ import { DisposableStore, event } from "../primitives";
 import { prevent, revert } from "../utils";
 import type { Component } from "./component";
 import type { AxisType } from "./axis";
-import type { LocationType } from "./location";
 import { RenderLoopType } from "./render-loop";
+import type { ScrollMotionType } from "./scroll-motion";
 
 export interface WheelType extends Component {}
 
 export function Wheel(
   root: HTMLElement,
   axis: AxisType,
-  location: LocationType,
+  motion: ScrollMotionType,
   renderLoop: RenderLoopType
 ): WheelType {
   /**
@@ -32,7 +32,7 @@ export function Wheel(
    * Handles wheel event.
    */
   function onWheel(event: WheelEvent) {
-    const { previous, current, velocity } = location;
+    const { previous, current, velocity } = motion;
     const delta = readPoint(event);
 
     previous.set(current);

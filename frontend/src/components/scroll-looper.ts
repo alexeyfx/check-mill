@@ -1,30 +1,29 @@
-import type { LocationType } from "./location";
 import type { LayoutMetrics } from "./layout";
+import type { ScrollMotionType } from "./scroll-motion";
 
 export interface ScrollLooperType {
   loop(): void;
 }
 
-export function ScrollLooper(location: LocationType, metrics: LayoutMetrics): ScrollLooperType {
+export function ScrollLooper(motion: ScrollMotionType, metrics: LayoutMetrics): ScrollLooperType {
   const jointSafety = 0.1;
 
-  let min: number = metrics.slideHeight + metrics.contentGap - metrics.contentHeight + jointSafety;
+  let min: number =
+    metrics.slideHeight + metrics.containerGap - metrics.contentHeight + jointSafety;
 
   let max: number = jointSafety;
 
   function loop(): void {
-    const direction = location.direction.get();
+    const direction = motion.direction.get();
 
-    if (!shouldLoop(direction)) {
-      return;
+    if (shouldLoop(direction)) {
+      const distance = -1 * direction * metrics.contentHeight + direction * metrics.containerGap;
+      motion.move(distance);
     }
-
-    const distance = -1 * direction * metrics.contentHeight;
-    location.forEach((vector) => vector.add(distance));
   }
 
   function shouldLoop(direction: number): boolean {
-    const offset = location.offset.get();
+    const offset = motion.offset.get();
 
     switch (direction) {
       case -1:
@@ -37,11 +36,11 @@ export function ScrollLooper(location: LocationType, metrics: LayoutMetrics): Sc
   }
 
   function reachedMax(offset: number): boolean {
-    return offset > max;
+    return offset >= max;
   }
 
   function reachedMin(offset: number): boolean {
-    return offset < min;
+    return offset <= min;
   }
 
   return {

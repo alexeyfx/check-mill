@@ -10,8 +10,9 @@ import {
   ScrollLooper,
   SlidesLooper,
   Viewport,
+  ScrollMotion,
+  RenderLoop,
 } from "./components";
-import { RenderLoop } from "./components/render-loop";
 import { query } from "./utils";
 
 export async function main() {
@@ -24,7 +25,8 @@ export async function main() {
   /** Scroll direction component */
   const axis = Axis("y");
 
-  const location = Location();
+  /** Scroll motion component */
+  const motion = ScrollMotion();
 
   const translate = Translate(axis, container);
 
@@ -32,7 +34,8 @@ export async function main() {
     gridGap: 8,
     checkboxSize: 24,
     slidePadding: [12, 12],
-    contentGap: 12,
+    containerGap: 12,
+    containerPadding: [12, 12],
     viewportRect: root.getBoundingClientRect(),
     slideMinClampedHeight: 300,
     slideMaxHeightPercent: 70,
@@ -44,18 +47,18 @@ export async function main() {
 
   const layout = new Layout(layoutBuilder.build());
 
-  const scrollLooper = ScrollLooper(location, layout.metrics());
+  const scrollLooper = ScrollLooper(motion, layout.metrics());
 
   const renderLoop = RenderLoop(document, window, update, render);
 
-  const drag = Drag(root, axis, location, renderLoop);
+  const drag = Drag(root, axis, motion, renderLoop);
 
-  const wheel = Wheel(root, axis, location, renderLoop);
+  const wheel = Wheel(root, axis, motion, renderLoop);
 
   const presenter = new Presenter(document, container, layout.metrics());
   presenter.initializePlaceholders();
 
-  const slidesLooper = SlidesLooper(axis, viewport, layout.metrics(), location, presenter.slides());
+  const slidesLooper = SlidesLooper(axis, viewport, layout.metrics(), motion, presenter.slides());
 
   await Promise.all([drag, wheel].map((m) => m.init()));
 
@@ -64,7 +67,7 @@ export async function main() {
   console.log("Running...");
 
   function update(_t: number, dt: number): void {
-    const { velocity, previous, current, direction } = location;
+    const { velocity, previous, current, direction } = motion;
     const integrated = applyFriction(velocity.get(), 0.75, dt);
     const displacement = current.get() + integrated - previous.get();
 
@@ -77,7 +80,7 @@ export async function main() {
   }
 
   function render(alpha: number): void {
-    const { current, previous, velocity } = location;
+    const { current, previous, velocity, offset } = motion;
     const isSettled = Math.abs(velocity.get()) < 0.01;
     const interpolated = current.get() * alpha + previous.get() * (1.0 - alpha);
 
@@ -85,7 +88,7 @@ export async function main() {
       renderLoop.stop();
     }
 
-    location.offset.set(interpolated);
+    offset.set(interpolated);
     scrollLooper.loop();
     slidesLooper.loop();
     translate.to(interpolated);
