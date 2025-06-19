@@ -13,28 +13,28 @@ const enum CSSVariables {
 }
 
 export class Presenter {
-  private readonly _slides: HTMLElement[] = [];
-
-  private readonly fragment: DocumentFragment;
-
-  private readonly checkboxFactory: CheckboxFactory;
-
-  private readonly slideFactory: SlideFactory;
-
-  private layoutMetrics: LayoutMetrics;
-
   private readonly root: HTMLElement;
 
   private readonly document: Document;
 
+  private readonly fragment: DocumentFragment;
+
+  private readonly slideFactory: SlideFactory;
+
+  private readonly checkboxFactory: CheckboxFactory;
+
+  private readonly _slides: HTMLElement[] = [];
+
+  private layoutMetrics: LayoutMetrics;
+
   constructor(ownerDocument: Document, root: HTMLElement, metrics: LayoutMetrics) {
     this.root = root;
     this.document = ownerDocument;
-    this.layoutMetrics = metrics;
     this.fragment = ownerDocument.createDocumentFragment();
+    this.layoutMetrics = metrics;
 
-    this.checkboxFactory = new CheckboxFactory(this.document);
     this.slideFactory = new SlideFactory(this.document);
+    this.checkboxFactory = new CheckboxFactory(this.document);
 
     this.writeVariables();
   }
@@ -54,44 +54,17 @@ export class Presenter {
   }
 
   /**
-   * Populates a placeholder slide with real content.
+   * Populates a slide with pre-generated checkbox content.
    */
   public populateSlide(index: number): void {
-    const { totalCells } = this.layoutMetrics;
     const target = this._slides[index];
     const fragment = this.fragment;
 
     if (!this.fragment.hasChildNodes()) {
-      const layoutFn = this.bindLayoutFn();
-
-      for (let i = 0; i < totalCells; i += 1) {
-        const [x, y] = layoutFn(i);
-        const checkbox = this.checkboxFactory.create(x, y);
-        fragment.appendChild(checkbox);
-      }
+      this.populateFragmentCache();
     }
 
     target.children[0].replaceChildren(fragment.cloneNode(true));
-  }
-
-  public bindLayoutFn(): (index: number) => [number, number] {
-    const { columns, checkboxSize, gridGap } = this.layoutMetrics;
-
-    const cellSize = checkboxSize + gridGap;
-
-    return (index: number): [number, number] => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-
-      const x = column * cellSize;
-      const y = row * cellSize;
-
-      return [x, y];
-    };
-  }
-
-  public slides(): HTMLElement[] {
-    return [...this._slides];
   }
 
   /**
@@ -120,6 +93,36 @@ export class Presenter {
   public destroyAllSlides(): void {
     this.root.replaceChildren();
     this._slides.length = 0;
+  }
+
+  /**
+   * Lazily populates the internal fragment with checkbox elements,
+   * arranged in a grid based on the layout metrics.
+   */
+  private populateFragmentCache(): void {
+    const { columns, checkboxSize, gridGap, totalCells } = this.layoutMetrics;
+
+    const cellSize = checkboxSize + gridGap;
+    const fragment = this.fragment;
+
+    let x = 0;
+    let y = 0;
+    let column = 0;
+
+    const advance = () => {
+      column++;
+      const wrap = (column - columns) >> 31;
+      const nextX = x + cellSize;
+      const nextY = y + (cellSize & ~wrap);
+      x = nextX & wrap;
+      y = nextY;
+      column = column & wrap;
+    };
+
+    for (let i = 0; i < totalCells; i += 1) {
+      fragment.appendChild(this.checkboxFactory.create(x, y));
+      advance();
+    }
   }
 
   /**
