@@ -100,28 +100,15 @@ export class Presenter {
    * arranged in a grid based on the layout metrics.
    */
   private populateFragmentCache(): void {
-    const { columns, checkboxSize, gridGap, totalCells } = this.layoutMetrics;
+    const { columns, rows, checkboxSize, gridGap } = this.layoutMetrics;
 
     const cellSize = checkboxSize + gridGap;
     const fragment = this.fragment;
 
-    let x = 0;
-    let y = 0;
-    let column = 0;
-
-    const advance = () => {
-      column++;
-      const wrap = (column - columns) >> 31;
-      const nextX = x + cellSize;
-      const nextY = y + (cellSize & ~wrap);
-      x = nextX & wrap;
-      y = nextY;
-      column = column & wrap;
-    };
-
-    for (let i = 0; i < totalCells; i += 1) {
-      fragment.appendChild(this.checkboxFactory.create(x, y));
-      advance();
+    for (let x = 0, y = 0, row = 0; row < rows; x = 0, y += cellSize, row += 1) {
+      for (let col = 0; col < columns; col += 1, x += cellSize) {
+        fragment.appendChild(this.checkboxFactory.create(x, y));
+      }
     }
   }
 
