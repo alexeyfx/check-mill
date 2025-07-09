@@ -1,17 +1,18 @@
+import type { GestureEvent } from "./components";
 import {
   Axis,
   Drag,
   Wheel,
   Translate,
-  Location,
   Layout,
-  LayoutConfigBuilder,
   Presenter,
   ScrollLooper,
   SlidesLooper,
   Viewport,
   ScrollMotion,
   RenderLoop,
+  Slides,
+  GestureState,
 } from "./components";
 import { query } from "./utils";
 
@@ -28,75 +29,108 @@ export async function main() {
   /** Scroll motion component */
   const motion = ScrollMotion();
 
-  const translate = Translate(axis, container);
+  /** Translate component */
+  const translate = Translate(axis);
 
-  const layoutBuilder = new LayoutConfigBuilder({
+  /** Viewport component */
+  const viewport = Viewport(root);
+
+  /** Layout component */
+  const layout = new Layout({
     gridGap: 8,
     checkboxSize: 24,
     slidePadding: [12, 12],
     containerGap: 12,
     containerPadding: [12, 12],
-    viewportRect: root.getBoundingClientRect(),
+    viewportRect: viewport.measure(),
     slideMinClampedHeight: 300,
     slideMaxHeightPercent: 70,
     slideMaxWidth: 1024,
     ghostSlidesMult: 3,
   });
 
-  const viewport = Viewport(root);
-
-  const layout = new Layout(layoutBuilder.build());
+  /** Slides component */
+  const slides = Slides(layout.metrics());
 
   const scrollLooper = ScrollLooper(motion, layout.metrics());
 
   const renderLoop = RenderLoop(document, window, update, render);
 
-  const drag = Drag(root, axis, motion, renderLoop);
+  /** Drag gesture */
+  const drag = Drag(root, axis);
 
-  const wheel = Wheel(root, axis, motion, renderLoop);
+  /** Wheel gesture */
+  const wheel = Wheel(root, axis);
 
   const presenter = new Presenter(document, container, layout.metrics());
   presenter.initializePlaceholders();
 
-  const slidesLooper = SlidesLooper(axis, viewport, layout.metrics(), motion, presenter.slides());
+  const slidesLooper = SlidesLooper(viewport, layout.metrics(), motion, slides);
 
-  await Promise.all([drag, wheel].map((m) => m.init()));
+  await Promise.all([drag, wheel, viewport].map((m) => m.init()));
 
   presenter.populateSlide(2);
+
+  drag.register(handleDragScroll);
+  wheel.register(handleWheelScroll);
 
   console.log("Running...");
 
   function update(_t: number, dt: number): void {
-    const { velocity, previous, current, direction } = motion;
-    const integrated = applyFriction(velocity.get(), 0.75, dt);
-    const displacement = current.get() + integrated - previous.get();
+    const integrated = applyFriction(motion.velocity, 0.75, dt);
+    const displacement = motion.current + integrated - motion.previous;
 
-    velocity.set(integrated);
-    previous.set(current);
-    current.add(integrated);
-    direction.set(Math.sign(displacement));
-
-    return;
+    motion.velocity = integrated;
+    motion.previous = motion.current;
+    motion.current += integrated;
+    motion.direction = Math.sign(displacement);
   }
 
   function render(alpha: number): void {
-    const { current, previous, velocity, offset } = motion;
-    const isSettled = Math.abs(velocity.get()) < 0.01;
-    const interpolated = current.get() * alpha + previous.get() * (1.0 - alpha);
+    const isSettled = Math.abs(motion.velocity) < 0.01;
+    const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
 
     if (isSettled || drag.interacting()) {
       renderLoop.stop();
     }
 
-    offset.set(interpolated);
+    motion.offset = interpolated;
     scrollLooper.loop();
     slidesLooper.loop();
-    translate.to(interpolated);
+    translate.to(container, interpolated);
   }
 
   function applyFriction(velocity: number, friction: number, dt: number): number {
     const decay = 1 - Math.pow(1 - friction, dt / 1000);
     const next = velocity * (1 - decay);
     return next;
+  }
+
+  function handleWheelScroll(event: GestureEvent): void {
+    motion.previous = motion.current;
+    motion.current += event.delta;
+    motion.velocity = 0;
+
+    renderLoop.start();
+  }
+
+  function handleDragScroll(event: GestureEvent): void {
+    const { state, delta } = event;
+
+    switch (state) {
+      case GestureState.Initialize:
+        motion.velocity = 0;
+        break;
+
+      case GestureState.Update:
+        motion.current += delta;
+        break;
+
+      case GestureState.Finalize:
+        motion.velocity = delta;
+        break;
+    }
+
+    renderLoop.start();
   }
 }

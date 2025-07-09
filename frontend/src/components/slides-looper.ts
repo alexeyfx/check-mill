@@ -1,6 +1,7 @@
 import { AxisType } from "./axis";
 import { LayoutMetrics } from "./layout";
 import { ScrollMotionType } from "./scroll-motion";
+import { SlidesType } from "./slides";
 import { Translate } from "./translate";
 import { ViewportType } from "./viewport";
 
@@ -34,14 +35,11 @@ export interface SlidesLooperType {
  * - If `rightEdge < viewport.height` → user scrolled past end → shift first slide to back
  */
 export function SlidesLooper(
-  axis: AxisType,
   viewport: ViewportType,
   metrics: LayoutMetrics,
   motion: ScrollMotionType,
-  slides: HTMLElement[]
+  slides: SlidesType
 ): SlidesLooperType {
-  const translates = slides.map((slide) => Translate(axis, slide));
-
   const translateOffset = metrics.contentHeight + metrics.containerGap;
 
   const viewportHeight = viewport.measure().height;
@@ -51,7 +49,9 @@ export function SlidesLooper(
   let lastOperation: VoidFunction = resetShift;
 
   function loop(): void {
-    const leftEdge = motion.offset.get();
+    return;
+
+    // const leftEdge = motion.offset.get();
     const rightedge = leftEdge + metrics.contentHeight;
 
     let currentOperation: VoidFunction = resetShift;
@@ -73,19 +73,21 @@ export function SlidesLooper(
   }
 
   function shiftRight(): void {
-    for (const t of translates.slice(-1 * translatesPerShift)) {
-      t.to(-1 * translateOffset);
+    for (const slide of slides.slice(-1 * translatesPerShift)) {
+      slide.translate.to(-1 * translateOffset);
     }
   }
 
   function shiftLeft(): void {
-    for (const t of translates.slice(0, translatesPerShift)) {
-      t.to(translateOffset);
+    for (const slide of slides.slice(0, translatesPerShift)) {
+      slide.translate.to(translateOffset);
     }
   }
 
   function resetShift(): void {
-    translates.forEach((t) => t.to(0));
+    for (const slide of slides) {
+      slide.translate.to(0);
+    }
   }
 
   function between(x: number, min: number, max: number): boolean {

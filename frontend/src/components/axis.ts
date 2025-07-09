@@ -23,7 +23,7 @@ export function Axis(axis: AxisOptionType): AxisType {
    * - Horizontal scroll (x-axis) is negative: -1
    * - Vertical scroll (y-axis) is positive: 1
    */
-  const sign = !isVertical ? -1 : 1;
+  const sign = isVertical ? 1 : -1;
 
   /**
    * Applies axis-specific direction adjustment to a number.

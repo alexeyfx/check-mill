@@ -1,9 +1,9 @@
-import { DisposableStore, event } from "../primitives";
-import { prevent } from "../utils";
-import type { AxisType } from "./axis";
-import type { Component } from "./component";
-import type { ScrollMotionType } from "./scroll-motion";
-import { RenderLoopType } from "./render-loop";
+import { DisposableStore, TypedEvent, event } from "../../primitives";
+import { prevent } from "../../utils";
+import type { AxisType } from "../axis";
+import type { Component } from "../component";
+import type { Gesture, GestureEvent } from "./gesture";
+import { GestureState, gestureEvent } from "./gesture";
 
 /**
  * If the user stops dragging for this duration while keeping the pointer down,
@@ -11,7 +11,7 @@ import { RenderLoopType } from "./render-loop";
  */
 const LOG_INTERVAL = 170;
 
-export interface DragType extends Component {
+export interface DragType extends Component, Gesture {
   interacting(): boolean;
 }
 
@@ -19,12 +19,7 @@ export interface DragType extends Component {
  * Drag component handles pointer-based dragging logic.
  * It tracks pointer events to support dragging along a single axis.
  */
-export function Drag(
-  root: HTMLElement,
-  axis: AxisType,
-  motion: ScrollMotionType,
-  renderLoop: RenderLoopType
-): DragType {
+export function Drag(root: HTMLElement, axis: AxisType): DragType {
   /**
    * First recorded pointer event in the drag interaction.
    */
@@ -51,11 +46,17 @@ export function Drag(
   const disposable = DisposableStore();
 
   /**
+   * Returns a reader for the wheel event stream.
+   */
+  const dragged = new TypedEvent<GestureEvent>();
+
+  /**
    * @internal
    * Component lifecycle method.
    */
   function init(): Promise<void> {
     disposable.pushStatic(
+      dragged.clear,
       event(root, "pointerdown", onPointerDown),
       event(root, "click", onMouseClick)
     );
@@ -83,12 +84,14 @@ export function Drag(
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
+    const gEvent = gestureEvent(0, GestureState.Initialize);
+
     lastEvent = event;
     startEvent = event;
     preventClick = event.buttons === 0;
     isInteracting = true;
 
-    motion.velocity.set(0);
+    dragged.emit(gEvent);
     addDragEvents();
   }
 
@@ -98,14 +101,14 @@ export function Drag(
   function onPointerMove(event: PointerEvent): void {
     const diff = diffCoord(event);
     const expired = diffTime(event) > LOG_INTERVAL;
+    const gEvent = gestureEvent(axis.direction(diff), GestureState.Update);
 
     lastEvent = event;
     if (expired) {
       startEvent = event;
     }
 
-    motion.current.add(axis.direction(diff));
-    renderLoop.start();
+    dragged.emit(gEvent);
     prevent(event, true);
   }
 
@@ -114,11 +117,11 @@ export function Drag(
    */
   function onPointerUp(event: PointerEvent): void {
     const acceleration = computeAcceleration(event);
+    const gEvent = gestureEvent(10 * acceleration, GestureState.Finalize);
 
     isInteracting = false;
 
-    motion.velocity.set(10 * acceleration);
-    renderLoop.start();
+    dragged.emit(gEvent);
     disposable.flushTemporal();
   }
 
@@ -189,6 +192,7 @@ export function Drag(
   return {
     init,
     destroy,
+    register: dragged.register,
     interacting,
   };
 }

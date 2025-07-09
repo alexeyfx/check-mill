@@ -1,32 +1,24 @@
 import type { AxisType } from "./axis";
 
 export type TranslateType = {
-  to: (target: number) => void;
-  clear: () => void;
+  to: (element: HTMLElement, target: number) => void;
+  clear: (element: HTMLElement) => void;
 };
 
 /**
- * Creates a translation controller for a given axis and container element.
+ * Creates a translation controller for a given axis.
  *
  * This abstraction handles performance-optimized DOM transform changes
- * using `translate3d` to move the container element along a specified axis.
+ * using `translate3d` to move the element along a specified axis.
  *
  * @param axis - Object representing the axis of movement (horizontal or vertical).
- * @param container - The HTML element to apply the translation to.
  * @returns An object with `to` and `clear` methods for managing element translation.
  */
-export function Translate(axis: AxisType, container: HTMLElement): TranslateType {
-  /**
-   * Cache the previously applied target to avoid redundant DOM updates.
-   */
-  let previousTarget: number | null = null;
-
+export function Translate(axis: AxisType): TranslateType {
   /**
    * The appropriate translate function based on axis orientation.
    */
   const translate = axis.isVertical ? y : x;
-
-  const containerStyle = container.style;
 
   /**
    * Returns a horizontal translate3d transform string.
@@ -53,25 +45,19 @@ export function Translate(axis: AxisType, container: HTMLElement): TranslateType
    *
    * @param target - The new translation distance.
    */
-  function to(target: number): void {
+  function to(element: HTMLElement, target: number): void {
     const roundedTarget = Math.round(target * 100) / 100;
-
-    if (roundedTarget === previousTarget) {
-      return;
-    }
-
-    containerStyle.transform = translate(roundedTarget);
-    previousTarget = roundedTarget;
+    element.style.transform = translate(roundedTarget);
   }
 
   /**
    * Clears the translation style from the container.
    */
-  function clear(): void {
-    containerStyle.transform = "";
+  function clear(element: HTMLElement): void {
+    element.style.transform = "";
 
-    if (!Boolean(container.getAttribute("style"))) {
-      container.removeAttribute("style");
+    if (!Boolean(element.getAttribute("style"))) {
+      element.removeAttribute("style");
     }
   }
 

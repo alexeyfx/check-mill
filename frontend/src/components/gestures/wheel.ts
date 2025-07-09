@@ -1,30 +1,30 @@
-import { DisposableStore, event } from "../primitives";
-import { prevent, revert } from "../utils";
-import type { Component } from "./component";
-import type { AxisType } from "./axis";
-import { RenderLoopType } from "./render-loop";
-import type { ScrollMotionType } from "./scroll-motion";
+import { DisposableStore, TypedEvent, event } from "../../primitives";
+import { prevent, revert } from "../../utils";
 
-export interface WheelType extends Component {}
+import type { AxisType } from "../axis";
+import type { Component } from "../component";
+import type { GestureEvent, Gesture } from "./gesture";
+import { GestureState, gestureEvent } from "./gesture";
 
-export function Wheel(
-  root: HTMLElement,
-  axis: AxisType,
-  motion: ScrollMotionType,
-  renderLoop: RenderLoopType
-): WheelType {
+export interface WheelType extends Component, Gesture {}
+
+export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
   /**
    * Disposable store for managing cleanup functions.
    */
   const disposable = DisposableStore();
 
   /**
+   * Returns a reader for the wheel event stream.
+   */
+  const wheeled = new TypedEvent<GestureEvent>();
+
+  /**
    * @internal
    * Component lifecycle method.
    */
   function init(): Promise<void> {
-    disposable.pushStatic(event(root, "wheel", onWheel));
-
+    disposable.pushStatic(wheeled.clear, event(root, "wheel", onWheel));
     return Promise.resolve();
   }
 
@@ -32,14 +32,9 @@ export function Wheel(
    * Handles wheel event.
    */
   function onWheel(event: WheelEvent) {
-    const { previous, current, velocity } = motion;
     const delta = readPoint(event);
-
-    previous.set(current);
-    current.add(revert(delta));
-    velocity.set(0);
-
-    renderLoop.start();
+    const gEvent = gestureEvent(revert(delta), GestureState.Update);
+    wheeled.emit(gEvent);
 
     prevent(event, true);
   }
@@ -64,5 +59,6 @@ export function Wheel(
   return {
     init,
     destroy,
+    register: wheeled.register,
   };
 }
