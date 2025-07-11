@@ -1,5 +1,6 @@
 import type { GestureEvent } from "./components";
 import {
+  AppStates,
   Axis,
   Drag,
   Wheel,
@@ -14,6 +15,7 @@ import {
   Slides,
   GestureState,
 } from "./components";
+import { State } from "./primitives";
 import { query } from "./utils";
 
 export async function main() {
@@ -48,6 +50,9 @@ export async function main() {
     slideMaxWidth: 1024,
     ghostSlidesMult: 3,
   });
+
+  /** App's state component */
+  const appState = new State();
 
   /** Slides component */
   const slides = Slides(layout.metrics());
@@ -90,7 +95,7 @@ export async function main() {
     const isSettled = Math.abs(motion.velocity) < 0.01;
     const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
 
-    if (isSettled || drag.interacting()) {
+    if (isSettled || appState.is(AppStates.GestureRunning)) {
       renderLoop.stop();
     }
 
@@ -120,6 +125,7 @@ export async function main() {
     switch (state) {
       case GestureState.Initialize:
         motion.velocity = 0;
+        appState.set(AppStates.GestureRunning);
         break;
 
       case GestureState.Update:
@@ -128,6 +134,7 @@ export async function main() {
 
       case GestureState.Finalize:
         motion.velocity = delta;
+        appState.unset(AppStates.GestureRunning);
         break;
     }
 

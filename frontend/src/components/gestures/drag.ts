@@ -11,9 +11,7 @@ import { GestureState, gestureEvent } from "./gesture";
  */
 const LOG_INTERVAL = 170;
 
-export interface DragType extends Component, Gesture {
-  interacting(): boolean;
-}
+export interface DragType extends Component, Gesture {}
 
 /**
  * Drag component handles pointer-based dragging logic.
@@ -34,11 +32,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Prevents click events after drag, to avoid accidental activation.
    */
   let preventClick: boolean = false;
-
-  /**
-   * True while the pointer is actively pressed down during interaction.
-   */
-  let isInteracting: boolean = false;
 
   /**
    * Disposable store for managing cleanup functions.
@@ -74,13 +67,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   }
 
   /**
-   * Returns true if any pointer event active;
-   */
-  function interacting(): boolean {
-    return isInteracting;
-  }
-
-  /**
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
@@ -89,7 +75,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
     lastEvent = event;
     startEvent = event;
     preventClick = event.buttons === 0;
-    isInteracting = true;
 
     dragged.emit(gEvent);
     addDragEvents();
@@ -118,8 +103,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   function onPointerUp(event: PointerEvent): void {
     const acceleration = computeAcceleration(event);
     const gEvent = gestureEvent(10 * acceleration, GestureState.Finalize);
-
-    isInteracting = false;
 
     dragged.emit(gEvent);
     disposable.flushTemporal();
@@ -193,6 +176,5 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
     init,
     destroy,
     register: dragged.register,
-    interacting,
   };
 }
