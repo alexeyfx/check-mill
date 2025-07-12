@@ -18,7 +18,9 @@ import {
 import { State } from "./primitives";
 import { query } from "./utils";
 
-export async function main() {
+export interface CheckMeMillionTimesType {}
+
+export async function CheckMeMillionTimes(): Promise<CheckMeMillionTimesType> {
   /** Application root element */
   const root = query(document, "#root", true) as HTMLElement;
 
@@ -140,4 +142,6 @@ export async function main() {
 
     renderLoop.start();
   }
+
+  return {};
 }
