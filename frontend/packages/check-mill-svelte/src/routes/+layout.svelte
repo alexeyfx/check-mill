@@ -1,6 +1,8 @@
 <script lang="ts">
-	import Header from '../components/Header.svelte';
+	import Header from '$lib/components/header/Header.svelte';
+	import DialogHost from '$lib/components/dialog/DialogHost.svelte';
 	import '../styles/index.scss';
+	import Drawer from '$lib/components/drawer/Drawer.svelte';
 </script>
 
 <svelte:head>
@@ -13,4 +15,6 @@
 </svelte:head>
 
 <Header />
+<DialogHost />
+<Drawer />
 <slot />

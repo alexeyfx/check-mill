@@ -61,7 +61,7 @@
 	</div>
 
 	<div class="texts">
-		<span class="primary-text">сheck me</span>
+		<span class="primary-text">сheck.me</span>
 		<span class="secondary-text">million times</span>
 	</div>
 </header>
