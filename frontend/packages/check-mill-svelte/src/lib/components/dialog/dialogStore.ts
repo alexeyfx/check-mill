@@ -18,7 +18,7 @@ function createDialogStore() {
 		return id;
 	}
 
-	function close(id: number) {
+	function close(id: number): void {
 		update((dialogs) => dialogs.filter((d) => d.id !== id));
 	}
 

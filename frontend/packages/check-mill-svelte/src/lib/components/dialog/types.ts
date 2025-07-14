@@ -8,9 +8,11 @@ type TransitionSpec = {
 };
 
 export interface Dialog<T = unknown, Props = Record<string, unknown>> {
-	component: typeof SvelteComponent;
+	component: LazyComponent;
 	props: Props;
 	inTransition?: TransitionSpec;
 	outTransition?: TransitionSpec;
 	close: (result: T) => void;
 }
+
+export type LazyComponent = Promise<{ default: typeof SvelteComponent }>;
