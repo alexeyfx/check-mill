@@ -1,8 +1,16 @@
 <script lang="ts">
 	import Header from '$lib/components/header/Header.svelte';
-	import DialogHost from '$lib/components/dialog/DialogHost.svelte';
+	import Dialogs from '$lib/components/dialogs/Dialogs.svelte';
+	import BottomSheet from '$lib/components/bottom-sheet/BottomSheet.svelte';
+
 	import '../styles/index.scss';
-	import Drawer from '$lib/components/drawer/Drawer.svelte';
+
+	let open = false;
+	let clear: number;
+	$: {
+		clearInterval(clear);
+		clear = setInterval(() => (open = !open), 1000);
+	}
 </script>
 
 <svelte:head>
@@ -15,6 +23,5 @@
 </svelte:head>
 
 <Header />
-<DialogHost />
-<Drawer />
 <slot />
+<Dialogs />

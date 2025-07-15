@@ -1,18 +1,20 @@
 <script lang="ts">
-	import { dialogStore } from './dialogStore';
+	import { dialogStore } from './dialog.store';
 </script>
 
-<div class="dialogs-root">
-	<div class="overlay { 'overlay--visible' }"></div>
+<div class="root">
+	<div class="overlay" class:overlay--visible={$dialogStore.length}></div>
 	{#each $dialogStore as { id, component, props } (id)}
-		<div class="dialog">
-			<svelte:component this={component} {...props} />
-		</div>
+		{#await component() then { default: LoadedComponent }}
+			<div class="dialog">
+				<svelte:component this={LoadedComponent} {...props} />
+			</div>
+		{/await}
 	{/each}
 </div>
 
-<style>
-	.dialogs-root {
+<style lang="scss">
+	.root {
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -40,16 +42,16 @@
 		outline: none;
 		overflow: auto;
 		transition-property: filter;
-		transition-duration: var(--tui-duration, .3s);
+		transition-duration: var(--tui-duration, 0.3s);
 		transition-timing-function: ease-in-out;
 		scrollbar-width: none;
 	}
 
 	.overlay {
 		transition-property: opacity;
-		transition-duration: .3s;
+		transition-duration: 0.3s;
 		transition-timing-function: ease-in-out;
-		background: rgba(0, 0, 0, .75);
+		background: rgba(0, 0, 0, 0.75);
 		opacity: 0;
 
 		&--visible {
@@ -60,7 +62,7 @@
 	.dialog {
 		position: sticky;
 		overscroll-behavior: none;
-		filter: brightness(.25);
+		filter: brightness(0.25);
 
 		&:last-child {
 			pointer-events: auto;
