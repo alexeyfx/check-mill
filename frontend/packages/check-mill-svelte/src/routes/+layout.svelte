@@ -1,7 +1,6 @@
 <script lang="ts">
 	import Header from '$lib/components/header/Header.svelte';
 	import Dialogs from '$lib/components/dialogs/Dialogs.svelte';
-	import BottomSheet from '$lib/components/bottom-sheet/BottomSheet.svelte';
 
 	import '../styles/index.scss';
 

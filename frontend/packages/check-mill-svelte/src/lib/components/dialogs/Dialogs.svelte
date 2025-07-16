@@ -1,9 +1,10 @@
 <script lang="ts">
+	import BottomSheet from '../bottom-sheet/BottomSheet.svelte';
 	import { dialogStore } from './dialog.store';
 </script>
 
 <div class="root">
-	<div class="overlay" class:overlay--visible={$dialogStore.length}></div>
+	<div class="overlay" class:overlay--visible={$dialogStore.length + 1}></div>
 	{#each $dialogStore as { id, component, props } (id)}
 		{#await component() then { default: LoadedComponent }}
 			<div class="dialog">
@@ -11,6 +12,9 @@
 			</div>
 		{/await}
 	{/each}
+	<div class="dialog">
+		<BottomSheet />
+	</div>
 </div>
 
 <style lang="scss">
@@ -21,6 +25,7 @@
 		inline-size: 100%;
 		block-size: 100%;
 		scrollbar-width: none;
+		-ms-overflow-style: none;
 		pointer-events: none;
 		overflow: hidden;
 		overscroll-behavior: none;
