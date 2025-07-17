@@ -1,0 +1,7 @@
+{
+	"name": "check-me-million-times",
+	"private": true,
+	"workspaces": [
+		"packages/*"
+	]
+}

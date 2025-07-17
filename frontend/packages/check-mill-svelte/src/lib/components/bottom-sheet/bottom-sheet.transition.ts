@@ -1,10 +1,14 @@
 import type { TransitionConfig } from 'svelte/transition';
 import { cubicOut } from 'svelte/easing';
 
-export function slideX(node: Element): TransitionConfig {
+export function slideY(
+	node: Element,
+	{ delay = 0, duration = 300, easing = cubicOut } = {}
+): TransitionConfig {
 	return {
-		duration: 300,
-		easing: cubicOut,
-		css: (t) => `transform: translateX(${(1 - t) * 100}%);`
+		delay,
+		duration,
+		easing,
+		css: (t) => `transform: translateY(${(1 - t) * 100}%);`
 	};
 }
