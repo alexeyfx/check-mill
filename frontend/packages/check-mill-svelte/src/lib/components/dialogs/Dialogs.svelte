@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dialogStore } from './dialog.store';
+	import DialogContextProvider from './DialogContextProvider.svelte';
 </script>
 
 <div class="root">
@@ -7,7 +8,9 @@
 	{#each $dialogStore as { id, component, props } (id)}
 		{#await component() then { default: LoadedComponent }}
 			<div class="dialog">
-				<svelte:component this={LoadedComponent} {...props} />
+				<DialogContextProvider {id}>
+					<svelte:component this={LoadedComponent} {...props} />
+				</DialogContextProvider>
 			</div>
 		{/await}
 	{/each}
@@ -21,7 +24,6 @@
 		inline-size: 100%;
 		block-size: 100%;
 		scrollbar-width: none;
-		-ms-overflow-style: none;
 		pointer-events: none;
 		overflow: hidden;
 		overscroll-behavior: none;

@@ -1,11 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-
 	let rootEl: HTMLElement;
-
-	onMount(() => {
-		console.log('mounted');
-	});
 </script>
 
 <div bind:this={rootEl} class="check-mill-root"></div>

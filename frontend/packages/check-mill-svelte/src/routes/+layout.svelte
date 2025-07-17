@@ -3,13 +3,8 @@
 	import Dialogs from '$lib/components/dialogs/Dialogs.svelte';
 
 	import '../styles/index.scss';
-
-	let open = false;
-	let clear: number;
-	$: {
-		clearInterval(clear);
-		clear = setInterval(() => (open = !open), 1000);
-	}
+	import { dialogStore } from '$lib/components/dialogs';
+	import { SettingsLazyDialog } from '$lib/components/settings';
 </script>
 
 <svelte:head>
@@ -23,4 +18,5 @@
 
 <Header />
 <slot />
+<button on:click={() => dialogStore.open(SettingsLazyDialog)}>Open</button>
 <Dialogs />
