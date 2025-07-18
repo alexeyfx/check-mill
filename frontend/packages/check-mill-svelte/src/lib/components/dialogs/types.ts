@@ -2,7 +2,7 @@ import type { SvelteComponent } from 'svelte';
 
 export interface Dialog<T = unknown, Props = Record<string, unknown>> {
 	component: LazyComponent;
-	props: Props;
+	props?: Props;
 	close: (result: T) => void;
 }
 

@@ -1,13 +1,18 @@
 {
-  "name": "check-mill",
+  "name": "@check-mill/core",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "watch": "vite build -w",
     "preview": "vite preview"
   },
   "devDependencies": {

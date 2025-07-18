@@ -5,14 +5,12 @@
 
 <div class="root">
 	<div class="overlay" class:_visible={$dialogStore.length}></div>
-	{#each $dialogStore as { id, component, props } (id)}
-		{#await component() then { default: LoadedComponent }}
-			<div class="dialog">
-				<DialogContextProvider {id}>
-					<svelte:component this={LoadedComponent} {...props} />
-				</DialogContextProvider>
-			</div>
-		{/await}
+	{#each $dialogStore as { id, component } (id)}
+		<div class="dialog">
+			<DialogContextProvider {id}>
+				<svelte:component this={component} />
+			</DialogContextProvider>
+		</div>
 	{/each}
 </div>
 

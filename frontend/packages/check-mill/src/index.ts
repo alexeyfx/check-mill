@@ -1,5 +1,4 @@
-import type { CheckMeMillionTimesType } from "./app";
-import { CheckMeMillionTimes } from "./app";
-import "./styles.css";
+export type { CheckMeMillionTimesType } from "./app";
+export { CheckMeMillionTimes } from "./app";
 
-CheckMeMillionTimes();
+import "./styles.css";

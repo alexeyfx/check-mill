@@ -120,3 +120,30 @@ export function trapFocus(node: HTMLElement, options: TrapFocusOptions | null = 
 		}
 	};
 }
+
+/**
+ * Dispatch event on click outside of node
+ * @param node - The DOM node to trap focus within
+ * @param callback - Optional configuration object
+ * @returns An action object with destroy method
+ */
+export function clickOutside<T extends HTMLElement>(node: T, callback: VoidFunction) {
+	let currentCallback = callback;
+
+	const handleClick = (event: MouseEvent) => {
+		if (!node.contains(event.target as Node) && !event.defaultPrevented) {
+			currentCallback();
+		}
+	};
+
+	document.addEventListener('click', handleClick, true);
+
+	return {
+		update(newCallback: VoidFunction) {
+			currentCallback = newCallback;
+		},
+		destroy() {
+			document.removeEventListener('click', handleClick, true);
+		}
+	};
+}

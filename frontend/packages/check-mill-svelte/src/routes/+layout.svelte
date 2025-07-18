@@ -1,10 +1,6 @@
 <script lang="ts">
-	import Header from '$lib/components/header/Header.svelte';
-	import Dialogs from '$lib/components/dialogs/Dialogs.svelte';
-
+	import { Header, Dialogs, dialogStore, SettingsLazyDialog } from '$lib/components';
 	import '../styles/index.scss';
-	import { dialogStore } from '$lib/components/dialogs';
-	import { SettingsLazyDialog } from '$lib/components/settings';
 </script>
 
 <svelte:head>
@@ -18,5 +14,8 @@
 
 <Header />
 <slot />
-<button on:click={() => dialogStore.open(SettingsLazyDialog)}>Open</button>
+<button
+	style="position: absolute; bottom: 0; left: 0;"
+	on:click={() => dialogStore.open(SettingsLazyDialog)}>Open</button
+>
 <Dialogs />

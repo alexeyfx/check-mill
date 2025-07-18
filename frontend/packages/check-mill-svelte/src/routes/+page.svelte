@@ -1,5 +1,5 @@
 <script lang="ts">
-	import CheckMillRenderer from '$lib/components/check-mill-renderer/CheckMillRenderer.svelte';
+	import { CheckMillRenderer } from '$lib/components';
 </script>
 
 <CheckMillRenderer />

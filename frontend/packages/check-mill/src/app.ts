@@ -16,17 +16,13 @@ import {
   GestureState,
 } from "./components";
 import { State } from "./primitives";
-import { query } from "./utils";
 
 export interface CheckMeMillionTimesType {}
 
-export async function CheckMeMillionTimes(): Promise<CheckMeMillionTimesType> {
-  /** Application root element */
-  const root = query(document, "#root", true) as HTMLElement;
-
-  /** Application scroll-body element */
-  const container = query(document, ".container", true) as HTMLElement;
-
+export async function CheckMeMillionTimes(
+  root: HTMLElement,
+  container: HTMLElement
+): Promise<CheckMeMillionTimesType> {
   /** Scroll direction component */
   const axis = Axis("y");
 

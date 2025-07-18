@@ -1,5 +1,5 @@
 {
-	"name": "check-mill-svelte",
+	"name": "@check-mill/svelte",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -14,7 +14,7 @@
 		"lint": "prettier --check . && eslint ."
 	},
 	"dependencies": {
-		"check-mill": "workspaces:*"
+		"@check-mill/core": "*"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",

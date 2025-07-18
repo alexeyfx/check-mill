@@ -1,8 +1,14 @@
 <script lang="ts">
-	import { slideX } from './drawer.transition';
+	import { clickOutside } from '$lib/utils';
+	import { dialogContext } from '../dialogs';
+	import { slideX } from './transitions';
+
+	const { close } = dialogContext.read();
 </script>
 
-<div transition:slideX class="drawer"></div>
+<div transition:slideX use:clickOutside={close} class="drawer">
+	<slot />
+</div>
 
 <style lang="scss">
 	.drawer {
@@ -11,9 +17,8 @@
 		right: 8px;
 		width: min(100%, 360px);
 		height: calc(100% - 16px);
-		padding: 8px;
 		border-radius: 16px;
-		background-color: white;
+		background-color: #ffedf3;
 		box-shadow:
 			0 0 2px 0 rgba(26, 27, 30, 0.08),
 			0 2px 4px 0 rgba(34, 36, 40, 0.06),

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { slideY } from './bottom-sheet.transition';
+	import { slideY } from './transitions';
 	import { dialogContext } from '../dialogs/dialog.context';
 
 	export let snapRatios = [0.25, 0.5, 0.75, 1];
@@ -13,7 +13,7 @@
 	let panelEl: HTMLDivElement;
 	let snapMarkers: HTMLDivElement[] = new Array(snapRatios.length);
 
-	const context = dialogContext.read();
+	const { close } = dialogContext.read();
 
 	onMount(() => {
 		const offsets = getSnapOffsets();
@@ -34,7 +34,7 @@
 		}
 
 		if (!activePointers && sheetEl.scrollTop <= 0) {
-			context.close();
+			close();
 		}
 	}
 </script>
@@ -45,6 +45,7 @@
 	on:touchstart={() => onPointerChange(-1)}
 	on:touchend={() => onPointerChange(-1)}
 	on:touchcancel={() => onPointerChange(-1)}
+	on:click|self={close}
 	transition:slideY
 	class="sheet"
 >
@@ -99,11 +100,10 @@
 			scrollbar-width: none;
 			inline-size: 100%;
 			height: 100%;
-			border-radius: 0.75rem 0.75rem 0 0;
-			padding: 0 1rem;
+			border-radius: 16px 16px 0 0;
 			margin: auto auto 0;
 			margin-block-start: auto;
-			background-color: white;
+			background-color: #ffedf3;
 			box-shadow:
 				0 0 2px 0 rgba(26, 27, 30, 0.08),
 				0 2px 4px 0 rgba(34, 36, 40, 0.06),

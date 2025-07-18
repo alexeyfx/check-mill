@@ -1,9 +1,9 @@
 import type { TransitionConfig } from 'svelte/transition';
-import { cubicOut } from 'svelte/easing';
+import { sineInOut } from 'svelte/easing';
 
 export function slideY(
-	node: Element,
-	{ delay = 0, duration = 300, easing = cubicOut } = {}
+	_: Element,
+	{ delay = 0, duration = 300, easing = sineInOut } = {}
 ): TransitionConfig {
 	return {
 		delay,

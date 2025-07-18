@@ -1,9 +1,10 @@
 import { writable } from 'svelte/store';
 import type { LazyComponent } from './types';
+import type { SvelteComponent } from 'svelte';
 
 type Dialog = {
 	id: number;
-	component: LazyComponent;
+	component: new () => SvelteComponent;
 	props?: Record<string, unknown>;
 };
 
@@ -11,9 +12,15 @@ function createDialogStore() {
 	const { subscribe, update } = writable<Dialog[]>([]);
 	let idCounter = 0;
 
-	function open(component: LazyComponent, props?: Record<string, unknown>): number {
+	async function open(
+		lazyComponent: LazyComponent,
+		props?: Record<string, unknown>
+	): Promise<number> {
 		const id = idCounter++;
-		update((dialogs) => [...dialogs, { id, component, props }]);
+		const loaded = await lazyComponent();
+
+		update((dialogs) => [...dialogs, { id, component: loaded.default, props }]);
+
 		return id;
 	}
 

@@ -76,11 +76,12 @@
 		align-items: center;
 		padding: 8px 16px 8px 8px;
 		border-radius: 8px;
-		background-color: white;
+		background-color: #ffedf3;
 		box-shadow:
 			0 0 2px 0 rgba(26, 27, 30, 0.08),
 			0 2px 4px 0 rgba(34, 36, 40, 0.06),
 			0 4px 6px 0 rgba(60, 63, 73, 0.04);
+		z-index: 1;
 	}
 
 	.logo {
