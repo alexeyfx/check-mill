@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { clickOutside } from '$lib/utils';
-	import { dialogContext } from '../dialogs';
-	import { slideX } from './transitions';
+	import { clickOutside } from "../../utils";
+	import { dialogContext } from "../dialogs";
+	import { slideX } from "./transitions";
 
 	const { close } = dialogContext.read();
 </script>
@@ -13,11 +13,11 @@
 <style lang="scss">
 	.drawer {
 		position: absolute;
-		top: 8px;
-		right: 8px;
-		width: min(100%, 360px);
-		height: calc(100% - 16px);
-		border-radius: 16px;
+		top: 0;
+		right: 0;
+		width: min(100%, 420px);
+		height: 100%;
+		border-radius: 16px 0 0 16px;
 		background-color: #ffedf3;
 		box-shadow:
 			0 0 2px 0 rgba(26, 27, 30, 0.08),

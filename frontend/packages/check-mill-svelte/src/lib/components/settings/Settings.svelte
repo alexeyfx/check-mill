@@ -1,20 +1,69 @@
 <script lang="ts">
-	import { DialogSwitcher } from '../dialog-switcher';
+	import { DialogSwitcher } from "../dialog-switcher";
+	import { Scroller } from "../scroller";
+	import { IconButton } from "../button";
+	import { dialogContext } from "../dialogs";
+
+	let { close } = dialogContext.read();
 </script>
 
 <DialogSwitcher>
 	<div class="settings">
 		<div class="settings__header">
-			<h3 class="settings__title">Settings</h3>
+			<h3 class="settings__title">Customization</h3>
+			<IconButton onclick={close}>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					width="16"
+					height="16"
+					stroke-width="2"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M6 18 18 6M6 6l12 12"
+					/>
+				</svg>
+			</IconButton>
 		</div>
-		<div class="settings__extra"></div>
 		<div class="settings__body">
-			<div class="scroller">
-				<div class="scroller__title">
-					<h4>Checkbox variant</h4>
-				</div>
-				<div class="scroller__body"></div>
-			</div>
+			<Scroller title={"Checkbox Variant"}>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+				<label class="radio-box">
+					<input class="radio-box__input" />
+					<div class="radio-box__media"></div>
+				</label>
+			</Scroller>
 		</div>
 	</div>
 </DialogSwitcher>
@@ -25,43 +74,58 @@
 
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
 		width: 100%;
-		padding: 16px 0;
-		overflow: hidden;
+		height: 100%;
+		color: #273f4f;
 
 		&__header {
-			padding-inline: var(--padding-inline);
 			flex: none;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			height: 80px;
+			padding-inline: var(--padding-inline);
+			border-bottom: 1px solid #f5cbcb;
 		}
 
-		&__extra {
-			flex: none;
+		&__title {
+			font-size: 24px;
+			font-weight: 500;
 		}
 
 		&__body {
+			position: relative;
 			display: flex;
 			flex-direction: column;
-			gap: 12px;
+			gap: 24px;
 			flex-grow: 1;
+			padding-top: 24px;
 		}
 	}
 
-	.scroller {
-		display: flex;
-		flex-direction: column;
-		gap: 8xp;
+	.radio-box {
+		position: relative;
+		width: auto;
+		height: 100px;
+		aspect-ratio: 1;
+		border-radius: 12px;
+		background-color: #fff;
+		border: 1px solid #ced4da;
 
-		&__title {
-			padding-inline: var(--padding-inline);
+		&._3x2 {
+			aspect-ratio: 3/2;
 		}
 
-		&__body {
-			display: flex;
-			gap: 8px;
-			padding-inline: var(--padding-inline);
-			overflow-x: auto;
-			overflow-y: hidden;
+		&__input {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
 		}
 	}
 </style>

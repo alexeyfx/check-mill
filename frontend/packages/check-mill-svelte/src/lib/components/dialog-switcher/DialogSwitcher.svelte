@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { BottomSheet } from '../bottom-sheet';
-	import { Drawer } from '../drawer';
+	import { BottomSheet } from "../bottom-sheet";
+	import { Drawer } from "../drawer";
 
-	const isDesktop =
-		typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : false;
+	const Component = isDesktop() ? Drawer : BottomSheet;
 
-	const Component = isDesktop ? Drawer : BottomSheet;
+	function isDesktop(): boolean {
+		return typeof window !== "undefined"
+			? window.matchMedia("(min-width: 768px)").matches
+			: false;
+	}
 </script>
 
 <svelte:component this={Component}>

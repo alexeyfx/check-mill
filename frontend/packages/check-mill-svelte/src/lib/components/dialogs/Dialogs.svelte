@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { dialogStore } from './dialog.store';
-	import DialogContextProvider from './DialogContextProvider.svelte';
+	import { dialogStore } from "./dialog.store";
+	import DialogContextProvider from "./DialogContextProvider.svelte";
 </script>
 
 <div class="root">
@@ -16,6 +16,7 @@
 
 <style lang="scss">
 	.root {
+		isolation: isolate;
 		position: fixed;
 		top: 0;
 		left: 0;
@@ -47,7 +48,7 @@
 	}
 
 	.overlay {
-		background: rgba(0, 0, 0, 0.75);
+		background: rgba(0, 0, 0, 0.6);
 		opacity: 0;
 		transition: opacity 0.3s ease-in-out;
 

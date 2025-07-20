@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { slideY } from './transitions';
-	import { dialogContext } from '../dialogs/dialog.context';
+	import { onMount } from "svelte";
+	import { slideY } from "./transitions";
+
+	import { dialogContext } from "../dialogs";
 
 	export let snapRatios = [0.25, 0.5, 0.75, 1];
 	export let initialSnapIndex = 0;
@@ -95,6 +96,7 @@
 		}
 
 		&__panel {
+			position: relative;
 			display: flex;
 			flex-direction: column;
 			scrollbar-width: none;
@@ -103,12 +105,11 @@
 			border-radius: 16px 16px 0 0;
 			margin: auto auto 0;
 			margin-block-start: auto;
-			background-color: #ffedf3;
+			background-color: #fff;
 			box-shadow:
 				0 0 2px 0 rgba(26, 27, 30, 0.08),
 				0 2px 4px 0 rgba(34, 36, 40, 0.06),
 				0 4px 6px 0 rgba(60, 63, 73, 0.04);
-			overflow: hidden;
 			scroll-snap-stop: always;
 			scroll-snap-align: start;
 			transition: border-radius 0.3s ease;
@@ -122,7 +123,6 @@
 		&__scrollable-content {
 			position: relative;
 			flex: 1;
-			overflow: hidden;
 		}
 
 		&__panel._stuck &__scrollable-content {
