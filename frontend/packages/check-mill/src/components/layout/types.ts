@@ -10,11 +10,12 @@ export type LayoutConfig = {
   slideMaxWidth:         number;
   slideMaxHeightPercent: number;
   slideMinClampedHeight: number;
+  totalCells:          number;
 };
 
 type CommonLayoutProperties = Pick<
   LayoutConfig,
-  "slidePadding" | "containerGap" | "containerPadding" | "gridGap" | "checkboxSize"
+  "slidePadding" | "containerGap" | "containerPadding" | "gridGap" | "checkboxSize" | "totalCells"
 >;
 
 // prettier-ignore
@@ -22,7 +23,7 @@ export type LayoutMetrics = {
   checkboxSize:       number;
   rows:               number;
   columns:            number;
-  totalCells:         number;
+  cellsPerPage:       number;
   slideWidth:         number;
   slideHeight:        number;
   materializedSlides: number;

@@ -1,6 +1,9 @@
 import type { LayoutMetrics } from "./layout";
 import { CheckboxFactory, SlideFactory } from "./dom-factories";
 import { px } from "../utils";
+import { SlidesType } from "./slides";
+import { Translate, TranslateType } from "./translate";
+import { AxisType } from "./axis";
 
 const enum CSSVariables {
   CHECKBOX_SIZE = "--checkbox-size",
@@ -25,18 +28,29 @@ export class Presenter {
 
   private readonly _slides: HTMLElement[] = [];
 
+  private readonly translate: TranslateType;
+
   private layoutMetrics: LayoutMetrics;
 
-  constructor(ownerDocument: Document, root: HTMLElement, metrics: LayoutMetrics) {
+  constructor(ownerDocument: Document, root: HTMLElement, axis: AxisType, metrics: LayoutMetrics) {
     this.root = root;
     this.document = ownerDocument;
     this.fragment = ownerDocument.createDocumentFragment();
     this.layoutMetrics = metrics;
+    this.translate = Translate(axis);
 
     this.slideFactory = new SlideFactory(this.document);
     this.checkboxFactory = new CheckboxFactory(this.document);
 
     this.writeVariables();
+  }
+
+  public syncSlidesOffset(slides: SlidesType): void {
+    const translateOffset = this.layoutMetrics.contentHeight - this.layoutMetrics.containerGap;
+
+    for (let i = 0; i < this._slides.length; i += 1) {
+      this.translate.to(this._slides[i], slides[i].viewportOffset * translateOffset);
+    }
   }
 
   /**
@@ -127,7 +141,7 @@ export class Presenter {
       slideWidth,
     } = this.layoutMetrics;
 
-    this.root.setAttribute("style", "");
+    this.root.removeAttribute("style");
 
     style.setProperty(CSSVariables.CHECKBOX_SIZE, px(checkboxSize));
     style.setProperty(CSSVariables.GRID_GAP, px(gridGap));

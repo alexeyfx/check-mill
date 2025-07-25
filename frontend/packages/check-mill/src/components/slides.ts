@@ -1,16 +1,23 @@
 import type { LayoutMetrics } from "./layout";
 
 export interface SlideType {
-  realIndex: number;
+  readonly realIndex: number;
   virtualIndex: number;
   pageIndex: number;
+  viewportOffset: number;
 }
 
-export function Slide(realIndex: number, virtualIndex: number, pageIndex: number): SlideType {
+export function Slide(
+  realIndex: number,
+  virtualIndex: number,
+  pageIndex: number,
+  viewportOffset = 0
+): SlideType {
   return {
     realIndex,
     virtualIndex,
     pageIndex,
+    viewportOffset,
   };
 }
 

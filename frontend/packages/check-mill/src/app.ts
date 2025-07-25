@@ -15,6 +15,7 @@ import {
   Slides,
   GestureState,
 } from "./components";
+import { Styles } from "./components/styles";
 import { State } from "./primitives";
 
 export interface CheckMeMillionTimesType {}
@@ -47,6 +48,7 @@ export async function CheckMeMillionTimes(
     slideMaxHeightPercent: 70,
     slideMaxWidth: 1024,
     ghostSlidesMult: 3,
+    totalCells: 1_048_560,
   });
 
   /** App's state component */
@@ -55,23 +57,25 @@ export async function CheckMeMillionTimes(
   /** Slides component */
   const slides = Slides(layout.metrics());
 
-  const scrollLooper = ScrollLooper(motion, layout.metrics());
-
-  const renderLoop = RenderLoop(document, window, update, render);
-
   /** Drag gesture */
   const drag = Drag(root, axis);
 
   /** Wheel gesture */
   const wheel = Wheel(root, axis);
 
-  const presenter = new Presenter(document, container, layout.metrics());
-  presenter.initializePlaceholders();
+  const renderLoop = RenderLoop(document, window, update, render);
+
+  const scrollLooper = ScrollLooper(motion, layout.metrics());
 
   const slidesLooper = SlidesLooper(viewport, layout.metrics(), motion, slides);
 
-  await Promise.all([drag, wheel, viewport].map((m) => m.init()));
+  const styles = Styles(root, layout.metrics());
 
+  const presenter = new Presenter(document, container, axis, layout.metrics());
+
+  await Promise.all([drag, wheel, viewport, styles].map((m) => m.init()));
+
+  presenter.initializePlaceholders();
   presenter.populateSlide(2);
 
   drag.register(handleDragScroll);
@@ -98,14 +102,16 @@ export async function CheckMeMillionTimes(
     }
 
     motion.offset = interpolated;
+
     scrollLooper.loop();
-    slidesLooper.loop();
+    slidesLooper.loop() && presenter.syncSlidesOffset(slides);
     translate.to(container, interpolated);
   }
 
   function applyFriction(velocity: number, friction: number, dt: number): number {
     const decay = 1 - Math.pow(1 - friction, dt / 1000);
     const next = velocity * (1 - decay);
+
     return next;
   }
 
