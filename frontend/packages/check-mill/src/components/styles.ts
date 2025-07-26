@@ -1,5 +1,5 @@
 import { px } from "../utils";
-import { Component } from "./component";
+import type { Component } from "./component";
 import { LayoutMetrics } from "./layout";
 
 const enum CSSVariables {

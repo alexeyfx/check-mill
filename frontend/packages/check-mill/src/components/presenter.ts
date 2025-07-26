@@ -1,19 +1,8 @@
 import type { LayoutMetrics } from "./layout";
 import { CheckboxFactory, SlideFactory } from "./dom-factories";
-import { px } from "../utils";
 import { SlidesType } from "./slides";
 import { Translate, TranslateType } from "./translate";
 import { AxisType } from "./axis";
-
-const enum CSSVariables {
-  CHECKBOX_SIZE = "--checkbox-size",
-  GRID_GAP = "--grid-gap",
-  SLIDE_WIDTH = "--slide-width",
-  SLIDE_HEIGHT = "--slide-height",
-  SLIDE_PADDING = "--slide-padding",
-  CONTAINER_GAP = "--container-gap",
-  CONTAINER_PADDING = "--container-padding",
-}
 
 export class Presenter {
   private readonly root: HTMLElement;
@@ -41,8 +30,6 @@ export class Presenter {
 
     this.slideFactory = new SlideFactory(this.document);
     this.checkboxFactory = new CheckboxFactory(this.document);
-
-    this.writeVariables();
   }
 
   public syncSlidesOffset(slides: SlidesType): void {
@@ -58,7 +45,6 @@ export class Presenter {
    */
   public initializePlaceholders(): void {
     const { totalSlides } = this.layoutMetrics;
-
     this.destroyAllSlides();
 
     for (const slide of this.slideFactory.batch(totalSlides)) {
@@ -124,31 +110,5 @@ export class Presenter {
         fragment.appendChild(this.checkboxFactory.create(x, y));
       }
     }
-  }
-
-  /**
-   * Writes layout variables into CSS custom properties.
-   */
-  private writeVariables(): void {
-    const { style } = this.root;
-    const {
-      checkboxSize,
-      gridGap,
-      containerGap,
-      containerPadding,
-      slidePadding,
-      slideHeight,
-      slideWidth,
-    } = this.layoutMetrics;
-
-    this.root.removeAttribute("style");
-
-    style.setProperty(CSSVariables.CHECKBOX_SIZE, px(checkboxSize));
-    style.setProperty(CSSVariables.GRID_GAP, px(gridGap));
-    style.setProperty(CSSVariables.SLIDE_PADDING, px(slidePadding));
-    style.setProperty(CSSVariables.SLIDE_WIDTH, px(slideWidth));
-    style.setProperty(CSSVariables.SLIDE_HEIGHT, px(slideHeight));
-    style.setProperty(CSSVariables.CONTAINER_GAP, px(containerGap));
-    style.setProperty(CSSVariables.CONTAINER_PADDING, px(containerPadding));
   }
 }

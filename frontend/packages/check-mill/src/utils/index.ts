@@ -1,5 +1,6 @@
 export * from "./array";
 export * from "./dom";
+export * from "./environment";
 export * from "./error";
 export * from "./function";
 export * from "./math";
