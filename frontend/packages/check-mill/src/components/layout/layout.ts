@@ -48,7 +48,7 @@ export class Layout implements LayoutType {
       contentHeight,
     } = this;
 
-    const { checkboxSize, gridGap, slidePadding, containerGap, containerPadding } =
+    const { checkboxSize, gridGap, slidePadding, containerGap, containerPadding, totalCells } =
       this.layoutConfig;
 
     this.cachedMetrics = {
@@ -57,7 +57,7 @@ export class Layout implements LayoutType {
       slidePadding,
       rows,
       columns,
-      totalCells: rows * columns,
+      cellsPerPage: rows * columns,
       slideWidth,
       slideHeight,
       totalSlides,
@@ -67,6 +67,7 @@ export class Layout implements LayoutType {
       containerPadding,
       contentWidth,
       contentHeight,
+      totalCells
     };
 
     return this.cachedMetrics;

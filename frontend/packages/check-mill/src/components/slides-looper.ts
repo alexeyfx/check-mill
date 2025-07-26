@@ -1,22 +1,19 @@
-import { AxisType } from "./axis";
 import { LayoutMetrics } from "./layout";
 import { ScrollMotionType } from "./scroll-motion";
 import { SlidesType } from "./slides";
-import { Translate } from "./translate";
 import { ViewportType } from "./viewport";
 
 export interface SlidesLooperType {
-  loop(): void;
+  loop(): boolean;
 }
 
 /**
  * Creates a slide looper that enables seamless looping of slides by conditionally
  * shifting the first or last slide when the user scrolls past the content bounds.
  *
- * @param axis - Axis on which the slides move (horizontal or vertical).
  * @param viewport - The viewport through which the slides are visible.
  * @param metrics - Layout metrics including dimensions of content and slides.
- * @param location - Provides current scroll offset.
+ * @param motion - Provides current scroll offset.
  * @param slides - An array of slide elements.
  * @returns An object implementing `SlidesLooperType`.
  *
@@ -40,20 +37,19 @@ export function SlidesLooper(
   motion: ScrollMotionType,
   slides: SlidesType
 ): SlidesLooperType {
-  const translateOffset = metrics.contentHeight + metrics.containerGap;
-
   const viewportHeight = viewport.measure().height;
 
   const translatesPerShift = Math.ceil(viewportHeight / metrics.slideHeight);
 
+  const noneOverflowable = slides.length - translatesPerShift;
+
   let lastOperation: VoidFunction = resetShift;
 
-  function loop(): void {
-    return;
-
-    // const leftEdge = motion.offset.get();
+  function loop(): boolean {
+    const leftEdge = motion.offset;
     const rightedge = leftEdge + metrics.contentHeight;
 
+    let moved = false;
     let currentOperation: VoidFunction = resetShift;
 
     if (between(leftEdge, 0, viewportHeight)) {
@@ -65,28 +61,34 @@ export function SlidesLooper(
     }
 
     if (currentOperation !== lastOperation) {
+      moved = true;
       resetShift();
       currentOperation();
     }
 
     lastOperation = currentOperation;
+
+    return moved;
   }
 
   function shiftRight(): void {
     for (const slide of slides.slice(-1 * translatesPerShift)) {
-      slide.translate.to(-1 * translateOffset);
+      slide.virtualIndex -= noneOverflowable;
+      slide.viewportOffset = -1;
     }
   }
 
   function shiftLeft(): void {
     for (const slide of slides.slice(0, translatesPerShift)) {
-      slide.translate.to(translateOffset);
+      slide.virtualIndex += noneOverflowable - 1;
+      slide.viewportOffset = 1;
     }
   }
 
   function resetShift(): void {
     for (const slide of slides) {
-      slide.translate.to(0);
+      slide.virtualIndex = slide.realIndex;
+      slide.viewportOffset = 0;
     }
   }
 
