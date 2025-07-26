@@ -105,7 +105,7 @@ export async function CheckMeMillionTimes(
 
     scrollLooper.loop();
     slidesLooper.loop() && presenter.syncSlidesOffset(slides);
-    translate.to(container, interpolated);
+    translate.to(container, motion.offset);
   }
 
   function applyFriction(velocity: number, friction: number, dt: number): number {

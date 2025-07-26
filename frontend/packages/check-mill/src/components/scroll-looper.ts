@@ -3,7 +3,7 @@ import type { ScrollMotionType } from "./scroll-motion";
 import { move } from "./scroll-motion";
 
 export interface ScrollLooperType {
-  loop(): void;
+  loop(): boolean;
 }
 
 export function ScrollLooper(motion: ScrollMotionType, metrics: LayoutMetrics): ScrollLooperType {
@@ -14,12 +14,16 @@ export function ScrollLooper(motion: ScrollMotionType, metrics: LayoutMetrics): 
 
   let max: number = jointSafety;
 
-  function loop(): void {
-    if (shouldLoop(motion.direction)) {
-      const distance =
-        -1 * motion.direction * metrics.contentHeight + motion.direction * metrics.containerGap;
+  function loop(): boolean {
+    const { direction } = motion;
+    const moved = shouldLoop(direction);
+
+    if (moved) {
+      const distance = -1 * direction * metrics.contentHeight + direction * metrics.containerGap;
       move(motion, distance);
     }
+
+    return moved;
   }
 
   function shouldLoop(direction: number): boolean {
