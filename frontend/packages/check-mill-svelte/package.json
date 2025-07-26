@@ -14,6 +14,8 @@
 		"vite": "^7.0.4"
 	},
 	"dependencies": {
-		"@check-mill/core": "*"
+		"@check-mill/core": "*",
+		"sass": "^1.89.2",
+		"sass-embedded-darwin-arm64": "^1.89.2"
 	}
 }
