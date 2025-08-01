@@ -39,7 +39,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   const disposable = DisposableStore();
 
   /**
-   * Returns a reader for the wheel event stream.
+   * Returns a reader for the drag event stream.
    */
   const dragged = new TypedEvent<GestureEvent>();
 

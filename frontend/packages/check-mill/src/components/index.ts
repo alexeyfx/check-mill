@@ -3,6 +3,7 @@ export * from "./axis";
 export * from "./component";
 export * from "./dom-factories";
 export * from "./gestures";
+export * from "./idle";
 export * from "./layout";
 export * from "./presenter";
 export * from "./render-loop";
