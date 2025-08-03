@@ -1,3 +1,4 @@
+import { between } from "../utils";
 import { LayoutMetrics } from "./layout";
 import { ScrollMotionType } from "./scroll-motion";
 import { SlidesType } from "./slides";
@@ -90,10 +91,6 @@ export function SlidesLooper(
       slide.virtualIndex = slide.realIndex;
       slide.viewportOffset = 0;
     }
-  }
-
-  function between(x: number, min: number, max: number): boolean {
-    return x >= min && x <= max;
   }
 
   return { loop };

@@ -27,7 +27,7 @@ export function Translate(axis: AxisType): TranslateType {
    * @returns A CSS transform string for horizontal movement.
    */
   function x(n: number): string {
-    return `translate3d(${n}px,0px,0px)`;
+    return `translate3d(${n}px, 0px, 0px)`;
   }
 
   /**
@@ -37,7 +37,7 @@ export function Translate(axis: AxisType): TranslateType {
    * @returns A CSS transform string for vertical movement.
    */
   function y(n: number): string {
-    return `translate3d(0px,${n}px,0px)`;
+    return `translate3d(0px, ${n}px, 0px)`;
   }
 
   /**

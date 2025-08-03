@@ -1,8 +1,8 @@
-import type { LayoutMetrics } from "./layout";
+import type { AxisType } from "./axis";
 import { CheckboxFactory, SlideFactory } from "./dom-factories";
-import { SlidesType } from "./slides";
+import type { LayoutMetrics } from "./layout";
+import type { SlidesType } from "./slides";
 import { Translate, TranslateType } from "./translate";
-import { AxisType } from "./axis";
 
 export class Presenter {
   private readonly root: HTMLElement;
@@ -32,11 +32,18 @@ export class Presenter {
     this.checkboxFactory = new CheckboxFactory(this.document);
   }
 
-  public syncSlidesOffset(slides: SlidesType): void {
+  public syncSlidesWithOffset(slides: SlidesType): void {
     const translateOffset = this.layoutMetrics.contentHeight - this.layoutMetrics.containerGap;
 
     for (let i = 0; i < this._slides.length; i += 1) {
       this.translate.to(this._slides[i], slides[i].viewportOffset * translateOffset);
+    }
+  }
+
+  public syncSlidesWithVisibility(visibility: boolean[]): void {
+    const length = this._slides.length;
+    for (let i = 0; i < length; i += 1) {
+      visibility[i] ? this.populateSlide(i) : this.emptySlide(i);
     }
   }
 
@@ -64,7 +71,7 @@ export class Presenter {
       this.populateFragmentCache();
     }
 
-    target.children[0].replaceChildren(fragment.cloneNode(true));
+    target.replaceChildren(fragment.cloneNode(true));
   }
 
   /**

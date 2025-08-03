@@ -26,7 +26,7 @@ export class CheckboxFactory {
   public create(x: number, y: number, checked: boolean = false): HTMLInputElement {
     const checkbox = this.template.cloneNode(true) as HTMLInputElement;
     checkbox.checked = checked;
-    checkbox.style.transform = `translate(${x}px, ${y}px)`;
+    checkbox.style.transform = `translate3d(${x}px, ${y}px, 0px)`;
 
     return checkbox;
   }
@@ -39,7 +39,6 @@ export class CheckboxFactory {
     const checkbox = this.document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.classList.add("_int_checkbox");
-    checkbox.style.position = "absolute";
     this.template = checkbox;
   }
 }

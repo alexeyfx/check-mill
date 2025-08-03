@@ -14,12 +14,15 @@ import {
   RenderLoop,
   Slides,
   GestureState,
-  Idle,
+  SlidesInView,
 } from "./components";
 import { Styles } from "./components/styles";
-import { State } from "./primitives";
+import { EventReader, EventWriter, State } from "./primitives";
 
-export interface CheckMeMillionTimesType {}
+export interface CheckMeMillionTimesType {
+  events: Record<string, EventReader<unknown>>;
+  commands: Record<string, EventWriter<unknown>>;
+}
 
 export async function CheckMeMillionTimes(
   root: HTMLElement,
@@ -64,7 +67,7 @@ export async function CheckMeMillionTimes(
   /** Wheel gesture */
   const wheel = Wheel(root, axis);
 
-  const idle = Idle(300);
+  const slidesInView = SlidesInView(slides, motion, layout.metrics(), viewport);
 
   const renderLoop = RenderLoop(document, window, update, render);
 
@@ -76,16 +79,12 @@ export async function CheckMeMillionTimes(
 
   const presenter = new Presenter(document, container, axis, layout.metrics());
 
-  await Promise.all([drag, wheel, viewport, styles, idle].map((m) => m.init()));
+  await Promise.all([drag, wheel, viewport, styles].map((m) => m.init()));
 
   presenter.initializePlaceholders();
-  presenter.populateSlide(2);
 
   drag.register(handleDragScroll);
   wheel.register(handleWheelScroll);
-
-  idle.activated.register(() => console.log("activated"));
-  idle.deactivated.register(() => console.log("deactivated"));
 
   console.log("Running...");
 
@@ -109,10 +108,8 @@ export async function CheckMeMillionTimes(
 
     motion.offset = interpolated;
 
-    idle.tick();
-
     scrollLooper.loop();
-    slidesLooper.loop() && presenter.syncSlidesOffset(slides);
+    slidesLooper.loop() && presenter.syncSlidesWithOffset(slides);
     translate.to(container, motion.offset);
   }
 
@@ -153,5 +150,8 @@ export async function CheckMeMillionTimes(
     renderLoop.start();
   }
 
-  return {};
+  return {
+    events: {},
+    commands: {},
+  };
 }

@@ -15,7 +15,6 @@
 	},
 	"dependencies": {
 		"@check-mill/core": "*",
-		"sass": "^1.89.2",
-		"sass-embedded-darwin-arm64": "^1.89.2"
+		"sass": "^1.89.2"
 	}
 }

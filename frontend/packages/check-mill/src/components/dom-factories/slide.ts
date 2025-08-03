@@ -40,12 +40,8 @@ export class SlideFactory {
    */
   private prefabricate(): void {
     const div = this.document.createElement("div");
-    const container = this.document.createElement("div");
-
-    container.classList.add("_int_container");
     div.classList.add("_int_slide");
 
-    div.appendChild(container);
     this.template = div;
   }
 }

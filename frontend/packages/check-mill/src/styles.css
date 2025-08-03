@@ -15,23 +15,18 @@
   position: relative;
   width: var(--slide-width);
   height: var(--slide-height);
+  padding: var(--slide-padding);
   background: rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   backdrop-filter: blur(4.5px);
   -webkit-backdrop-filter: blur(4.5px);
   border-radius: 10px;
   outline: 1px inset rgba(255, 255, 255, 0.18);
+  content-visibility: auto;
 }
 
-._int_container {
-  width: 100%;
-  height: 100%;
-  padding: var(--slide-padding);
-  overflow: hidden;
-  will-change: opacity;
-}
-
-input[type="checkbox"]._int_checkbox {
+input[type="checkbox"] {
+  position: absolute;
   width: var(--checkbox-size);
   aspect-ratio: 1;
 }
