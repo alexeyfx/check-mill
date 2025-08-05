@@ -6,7 +6,6 @@ import {
   Wheel,
   Translate,
   Layout,
-  Presenter,
   ScrollLooper,
   SlidesLooper,
   Viewport,
@@ -15,9 +14,12 @@ import {
   Slides,
   GestureState,
   SlidesInView,
+  SlideFactory,
+  Renderer,
 } from "./components";
 import { Styles } from "./components/styles";
 import { EventReader, EventWriter, State } from "./primitives";
+import { throttle } from "./utils";
 
 export interface CheckMeMillionTimesType {
   events: Record<string, EventReader<unknown>>;
@@ -59,7 +61,7 @@ export async function CheckMeMillionTimes(
   const appState = new State();
 
   /** Slides component */
-  const slides = Slides(layout.metrics());
+  const slides = Slides(new SlideFactory(document), layout.metrics());
 
   /** Drag gesture */
   const drag = Drag(root, axis);
@@ -67,7 +69,7 @@ export async function CheckMeMillionTimes(
   /** Wheel gesture */
   const wheel = Wheel(root, axis);
 
-  const slidesInView = SlidesInView(slides, motion, layout.metrics(), viewport);
+  const slidesInView = SlidesInView(root, slides);
 
   const renderLoop = RenderLoop(document, window, update, render);
 
@@ -77,11 +79,13 @@ export async function CheckMeMillionTimes(
 
   const styles = Styles(root, layout.metrics());
 
-  const presenter = new Presenter(document, container, axis, layout.metrics());
+  const renderer = Renderer(document, container, layout.metrics());
 
-  await Promise.all([drag, wheel, viewport, styles].map((m) => m.init()));
+  const syncSlidesVisibilityThrottled = throttle(syncSlideVisibility, 300);
 
-  presenter.initializePlaceholders();
+  await Promise.all([slidesInView, drag, wheel, viewport, styles].map((m) => m.init()));
+
+  renderer.appendSlides(slides);
 
   drag.register(handleDragScroll);
   wheel.register(handleWheelScroll);
@@ -109,7 +113,10 @@ export async function CheckMeMillionTimes(
     motion.offset = interpolated;
 
     scrollLooper.loop();
-    slidesLooper.loop() && presenter.syncSlidesWithOffset(slides);
+    slidesLooper.loop();
+
+    syncSlidesVisibilityThrottled();
+
     translate.to(container, motion.offset);
   }
 
@@ -148,6 +155,22 @@ export async function CheckMeMillionTimes(
     }
 
     renderLoop.start();
+  }
+
+  function syncSlideVisibility(): void {
+    let index = 0;
+
+    for (const record of slidesInView.takeRecords()) {
+      switch (record) {
+        case -1:
+          renderer.fadeOut(slides[index]);
+          break;
+        case 1:
+          renderer.fadeIn(slides[index]);
+      }
+
+      index += 1;
+    }
   }
 
   return {

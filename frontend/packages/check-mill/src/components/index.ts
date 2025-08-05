@@ -13,3 +13,4 @@ export * from "./slides-in-view";
 export * from "./slides-looper";
 export * from "./translate";
 export * from "./viewport";
+export * from "./renderer";

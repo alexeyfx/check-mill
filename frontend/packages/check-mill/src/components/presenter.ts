@@ -1,5 +1,5 @@
 import type { AxisType } from "./axis";
-import { CheckboxFactory, SlideFactory } from "./dom-factories";
+import { CheckboxFactory } from "./dom-factories";
 import type { LayoutMetrics } from "./layout";
 import type { SlidesType } from "./slides";
 import { Translate, TranslateType } from "./translate";
@@ -10,8 +10,6 @@ export class Presenter {
   private readonly document: Document;
 
   private readonly fragment: DocumentFragment;
-
-  private readonly slideFactory: SlideFactory;
 
   private readonly checkboxFactory: CheckboxFactory;
 
@@ -28,7 +26,6 @@ export class Presenter {
     this.layoutMetrics = metrics;
     this.translate = Translate(axis);
 
-    this.slideFactory = new SlideFactory(this.document);
     this.checkboxFactory = new CheckboxFactory(this.document);
   }
 
