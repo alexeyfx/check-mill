@@ -23,7 +23,7 @@
   content-visibility: auto;
 }
 
-._int_container {
+._int_slide__container {
   position: relative;
   width: 100%;
   height: 100%;
@@ -37,14 +37,14 @@
   overflow: hidden;
 }
 
+._int_slide__container--visible {
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+}
+
 input[type="checkbox"] {
   position: absolute;
   width: var(--checkbox-size);
   aspect-ratio: 1;
-}
-
-._int_visible {
-  opacity: 1;
-  transform: scale(1);
-  visibility: visible;
 }

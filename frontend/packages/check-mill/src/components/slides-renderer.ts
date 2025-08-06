@@ -11,6 +11,8 @@ export interface SlidesRendererType {
   syncOffset(slides: SlidesCollectionType): void;
 }
 
+const FADE_IN_CLASS_NAME = "_int_slide__container--visible";
+
 export function SlidesRenderer(
   document: Document,
   root: HTMLElement,
@@ -50,14 +52,14 @@ export function SlidesRenderer(
 
     requestAnimationFrame(() => {
       container.replaceChildren(fragment.cloneNode(true));
-      container.classList.add("_int_visible");
+      container.classList.add(FADE_IN_CLASS_NAME);
     });
   }
 
   function fadeOut(slide: SlideType): void {
     const container = slide.nativeElement.children[0] as HTMLElement;
 
-    container.classList.remove("_int_visible");
+    container.classList.remove(FADE_IN_CLASS_NAME);
     container.addEventListener(
       "transitionend",
       () => requestAnimationFrame(() => container.replaceChildren()),

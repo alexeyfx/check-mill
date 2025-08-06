@@ -1,2 +1,2 @@
-export type { CheckMeMillionTimesType } from "./app";
-export { CheckMeMillionTimes } from "./app";
+export type { CheckMeMillionTimesType } from "./check-me-million-times";
+export { CheckMeMillionTimes } from "./check-me-million-times";
