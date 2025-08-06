@@ -65,20 +65,12 @@ export class UintXBitSet {
       rawBytes[i] = binaryString.charCodeAt(i);
     }
 
-    const ArrayConstructor = uintXArrayConstructor(width);
+    const ArrayCtor = uintXArrayConstructor(width);
     const length = rawBytes.byteLength / (width >> 3);
 
-    this.bytes = new ArrayConstructor(
-      rawBytes.buffer,
-      rawBytes.byteOffset,
-      length
-    );
+    this.bytes = new ArrayCtor(rawBytes.buffer, rawBytes.byteOffset, length);
 
-    this.view = new DataView(
-      this.bytes.buffer,
-      this.bytes.byteOffset,
-      this.bytes.byteLength
-    );
+    this.view = new DataView(this.bytes.buffer, this.bytes.byteOffset, this.bytes.byteLength);
   }
 
   /**
@@ -251,11 +243,7 @@ function uintXArrayConstructor(width: XBits): UintXArrayConstructor {
  * @returns Base64 encoded string representing the array.
  */
 function base64String(array: UintXArray): string {
-  const rawBytes = new Uint8Array(
-    array.buffer,
-    array.byteOffset,
-    array.byteLength
-  );
+  const rawBytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
 
   let binary = "";
   for (let i = 0; i < rawBytes.length; i++) {

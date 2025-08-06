@@ -15,7 +15,7 @@ import {
   GestureState,
   SlidesInView,
   SlideFactory,
-  Renderer,
+  SlidesRenderer,
 } from "./components";
 import { Styles } from "./components/styles";
 import { EventReader, EventWriter, State } from "./primitives";
@@ -71,26 +71,35 @@ export async function CheckMeMillionTimes(
 
   const slidesInView = SlidesInView(root, slides);
 
-  const renderLoop = RenderLoop(document, window, update, render);
+  const slidesLooper = SlidesLooper(viewport, layout.metrics(), motion, slides);
 
   const scrollLooper = ScrollLooper(motion, layout.metrics());
 
-  const slidesLooper = SlidesLooper(viewport, layout.metrics(), motion, slides);
+  const renderLoop = RenderLoop(document, window, update, render);
 
   const styles = Styles(root, layout.metrics());
 
-  const renderer = Renderer(document, container, layout.metrics());
+  const renderer = SlidesRenderer(document, container, axis, layout.metrics());
 
   const syncSlidesVisibilityThrottled = throttle(syncSlideVisibility, 300);
 
-  await Promise.all([slidesInView, drag, wheel, viewport, styles].map((m) => m.init()));
+  await Promise.resolve().then(init).then(afterInit);
 
-  renderer.appendSlides(slides);
+  async function init(): Promise<void> {
+    const components = [slidesInView, viewport, styles, drag, wheel];
+    await Promise.all(components.map((m) => m.init()));
+  }
 
-  drag.register(handleDragScroll);
-  wheel.register(handleWheelScroll);
+  async function afterInit(): Promise<void> {
+    renderer.appendSlides(slides);
 
-  console.log("Running...");
+    drag.register(handleDragScroll);
+    wheel.register(handleWheelScroll);
+
+    renderLoop.start();
+
+    console.log("Running...");
+  }
 
   function update(_t: number, dt: number): void {
     const integrated = applyFriction(motion.velocity, 0.75, dt);
@@ -113,7 +122,7 @@ export async function CheckMeMillionTimes(
     motion.offset = interpolated;
 
     scrollLooper.loop();
-    slidesLooper.loop();
+    slidesLooper.loop() && renderer.syncOffset(slides);
 
     syncSlidesVisibilityThrottled();
 

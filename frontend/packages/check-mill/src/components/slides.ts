@@ -9,6 +9,8 @@ export interface SlideType {
   viewportOffset: number;
 }
 
+export type SlidesCollectionType = Readonly<SlideType[]>;
+
 export function Slide(
   nativeElement: HTMLElement,
   realIndex: number,
@@ -25,9 +27,7 @@ export function Slide(
   };
 }
 
-export type SlidesType = Readonly<SlideType[]>;
-
-export function Slides(slideFactory: SlideFactory, metrics: LayoutMetrics): SlidesType {
+export function Slides(slideFactory: SlideFactory, metrics: LayoutMetrics): SlidesCollectionType {
   const slides = new Array(metrics.totalSlides);
 
   let index = 0;

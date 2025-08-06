@@ -39,6 +39,7 @@ export class CheckboxFactory {
     const checkbox = this.document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.classList.add("_int_checkbox");
+
     this.template = checkbox;
   }
 }

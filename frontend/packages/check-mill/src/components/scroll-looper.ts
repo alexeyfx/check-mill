@@ -9,10 +9,9 @@ export interface ScrollLooperType {
 export function ScrollLooper(motion: ScrollMotionType, metrics: LayoutMetrics): ScrollLooperType {
   const jointSafety = 0.1;
 
-  let min: number =
-    metrics.slideHeight + metrics.containerGap - metrics.contentHeight + jointSafety;
+  let min = metrics.slideHeight + metrics.containerGap - metrics.contentHeight + jointSafety;
 
-  let max: number = jointSafety;
+  let max = jointSafety;
 
   function loop(): boolean {
     const { direction } = motion;

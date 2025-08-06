@@ -1,4 +1,4 @@
-import type { SlidesType } from "./slides";
+import type { SlidesCollectionType } from "./slides";
 import type { Component } from "./component";
 import { DisposableStore } from "../primitives";
 
@@ -12,7 +12,7 @@ export interface SlidesInViewType extends Component {
  * @param slides - Array of slide objects containing layout and index information.
  * @returns {SlideInViewType}
  */
-export function SlidesInView(root: HTMLElement, slides: SlidesType): SlidesInViewType {
+export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): SlidesInViewType {
   let lastRecords = new Array(slides.length).fill(0);
 
   let currentRecords = new Array(slides.length).fill(0);

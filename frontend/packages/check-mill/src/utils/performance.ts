@@ -1,13 +1,13 @@
 /**
- * Measures and logs the execution time of a synchronous callback.
+ * Measures and logs the execution time of a synchronous function.
  *
  * @param message - A label to include in the console output.
- * @param callback - The synchronous function to measure.
+ * @param func - The synchronous function to measure.
  */
-export function measure(message: string, callback: VoidFunction): void {
+export function measure(message: string, func: VoidFunction): void {
   const start = performance.now();
 
-  callback();
+  func();
 
   const end = performance.now();
   console.log(`${message}: ${(end - start).toFixed(2)}ms`);

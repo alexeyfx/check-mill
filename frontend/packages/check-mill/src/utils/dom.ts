@@ -1,5 +1,3 @@
-import { assert } from "./error";
-
 /**
  * Call the `preventDefault()` of the provided event.
  *
@@ -13,18 +11,4 @@ export function prevent(e: Event, stopPropagation?: boolean): void {
     e.stopPropagation();
     e.stopImmediatePropagation();
   }
-}
-
-export function query<E extends Element = Element>(
-  parent: Element | Document,
-  selector: string,
-  panic?: boolean
-): E | null {
-  const element = parent.querySelector(selector);
-
-  if (panic) {
-    assert(element, `No elemenet matches provided selector: '${selector}'`);
-  }
-
-  return parent.querySelector(selector);
 }

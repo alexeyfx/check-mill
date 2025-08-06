@@ -21,7 +21,7 @@ export function ScrollMotion(): ScrollMotionType {
     previous: 0.0,
     offset: 0.0,
     target: 0.0,
-    velocity: 1.0,
+    velocity: 0.0,
     direction: 1,
   };
 }

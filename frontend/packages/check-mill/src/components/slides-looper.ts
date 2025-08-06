@@ -1,8 +1,8 @@
 import { between } from "../utils";
 import { LayoutMetrics } from "./layout";
-import { ScrollMotionType } from "./scroll-motion";
-import { SlidesType } from "./slides";
-import { ViewportType } from "./viewport";
+import type { ScrollMotionType } from "./scroll-motion";
+import type { SlidesCollectionType } from "./slides";
+import type { ViewportType } from "./viewport";
 
 export interface SlidesLooperType {
   loop(): boolean;
@@ -36,7 +36,7 @@ export function SlidesLooper(
   viewport: ViewportType,
   metrics: LayoutMetrics,
   motion: ScrollMotionType,
-  slides: SlidesType
+  slides: SlidesCollectionType
 ): SlidesLooperType {
   const viewportHeight = viewport.measure().height;
 

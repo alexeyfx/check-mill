@@ -12,10 +12,8 @@
 }
 
 ._int_slide {
-  position: relative;
   width: var(--slide-width);
   height: var(--slide-height);
-  padding: var(--slide-padding);
   background: rgba(255, 255, 255, 0.25);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   backdrop-filter: blur(4.5px);
@@ -25,8 +23,28 @@
   content-visibility: auto;
 }
 
+._int_container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: var(--slide-padding);
+  opacity: 0;
+  transform: scale(0.97);
+  visibility: hidden;
+  will-change: opacity, visibility, scale;
+  transition: 0.3s opacity, 0.3s visibility, 0.3s transform;
+  transition-timing-function: ease-in-out;
+  overflow: hidden;
+}
+
 input[type="checkbox"] {
   position: absolute;
   width: var(--checkbox-size);
   aspect-ratio: 1;
+}
+
+._int_visible {
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
 }

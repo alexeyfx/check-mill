@@ -149,7 +149,7 @@ export function RenderLoop(
    * @param {Event} _event - The visibility change event.
    */
   function onVisibilityChange(_event: Event): void {
-    if (document.hidden) {
+    if (ownerDocument.hidden) {
       stop();
     }
   }
