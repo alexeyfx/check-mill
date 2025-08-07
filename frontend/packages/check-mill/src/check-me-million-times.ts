@@ -4,7 +4,6 @@ import {
   Axis,
   Drag,
   Wheel,
-  Translate,
   Layout,
   ScrollLooper,
   SlidesLooper,
@@ -30,14 +29,13 @@ export async function CheckMeMillionTimes(
   root: HTMLElement,
   container: HTMLElement
 ): Promise<CheckMeMillionTimesType> {
+  root.classList.add("_int_scroll_area");
+
   /** Scroll direction component */
   const axis = Axis("y");
 
   /** Scroll motion component */
   const motion = ScrollMotion();
-
-  /** Translate component */
-  const translate = Translate(axis);
 
   /** Viewport component */
   const viewport = Viewport(root);
