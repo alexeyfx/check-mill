@@ -53,7 +53,7 @@ export async function CheckMeMillionTimes(
     slideMinClampedHeight: 300,
     slideMaxHeightPercent: 70,
     slideMaxWidth: 1024,
-    ghostSlidesMult: 3,
+    ghostSlidesMult: 2,
     totalCells: 1_048_560,
   });
 
@@ -102,7 +102,7 @@ export async function CheckMeMillionTimes(
   }
 
   function update(_t: number, dt: number): void {
-    const integrated = applyFriction(motion.velocity, 0.75, dt);
+    const integrated = applyFriction(motion.velocity, 0.6, dt);
     const displacement = motion.current + integrated - motion.previous;
 
     motion.velocity = integrated;
@@ -122,11 +122,9 @@ export async function CheckMeMillionTimes(
     motion.offset = interpolated;
 
     scrollLooper.loop();
-    slidesLooper.loop() && renderer.syncOffset(slides);
-
+    slidesLooper.loop();
+    renderer.syncOffset(motion, slides);
     syncSlidesVisibilityThrottled();
-
-    translate.to(container, motion.offset);
   }
 
   function applyFriction(velocity: number, friction: number, dt: number): number {

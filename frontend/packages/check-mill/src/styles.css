@@ -6,9 +6,6 @@
   padding: var(--container-padding);
   gap: var(--container-gap);
   min-height: 100%;
-  user-select: none;
-  touch-action: none;
-  isolation: isolate;
 }
 
 ._int_slide {
@@ -29,17 +26,15 @@
   height: 100%;
   padding: var(--slide-padding);
   opacity: 0;
-  transform: scale(0.97);
   visibility: hidden;
-  will-change: opacity, visibility, scale;
-  transition: 0.3s opacity, 0.3s visibility, 0.3s transform;
+  will-change: opacity, visibility;
+  transition: 0.3s opacity, 0.3s visibility;
   transition-timing-function: ease-in-out;
   overflow: hidden;
 }
 
 ._int_slide__container--visible {
   opacity: 1;
-  transform: scale(1);
   visibility: visible;
 }
 
