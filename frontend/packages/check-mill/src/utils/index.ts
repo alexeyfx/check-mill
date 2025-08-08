@@ -1,3 +1,4 @@
+export * from "./animation";
 export * from "./array";
 export * from "./dom";
 export * from "./environment";
