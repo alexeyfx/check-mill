@@ -5,6 +5,12 @@ export interface RafSequencerType {
   cancel(id: number): void;
 }
 
+type Group = {
+  tasks: ReadonlyArray<VoidFunction>;
+  idx: number;
+  cancelled: boolean;
+};
+
 /**
  * Creates a lightweight, requestAnimationFrame-driven task sequencer.
  * Each animation frame, at most one task is executed across all groups.
@@ -20,7 +26,12 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
    * FIFO list of task groups.
    * Each group is an array of `VoidFunction`s executed in LIFO order.
    */
-  const queue: VoidFunction[][] = [];
+  const queue: Group[] = [];
+
+  /**
+   * Index of the current head group. We advance this as groups finish/cancel.
+   */
+  let head = 0;
 
   /**
    * Count of tasks still pending across all groups.
@@ -52,10 +63,17 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
    * @returns The index of the newly enqueued task group.
    */
   function enqueue(tasks: VoidFunction[]): number {
-    const groupIndex = queue.push([...tasks].reverse()) - 1;
+    const group = {
+      tasks,
+      idx: 0,
+      cancelled: false,
+    };
+    const groupIndex = queue.push(group) - 1;
     pendingTasksCount += tasks.length;
 
-    animationId ||= ownerWindow.requestAnimationFrame(tick);
+    if (animationId === 0) {
+      animationId = ownerWindow.requestAnimationFrame(tick);
+    }
 
     return groupIndex;
   }
@@ -65,7 +83,9 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
    * when due, drains exactly one task across all groups.
    */
   function tick(timeStamp: DOMHighResTimeStamp): void {
-    lastTimeStamp ||= timeStamp;
+    if (lastTimeStamp === null) {
+      lastTimeStamp ||= timeStamp;
+    }
 
     const elapsed = timeStamp - lastTimeStamp;
     if (elapsed >= fixedTimeStep) {
@@ -73,10 +93,10 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
       drainOneTask();
     }
 
+    animationId = 0;
+
     if (pendingTasksCount > 0) {
       animationId = ownerWindow.requestAnimationFrame(tick);
-    } else {
-      animationId = 0;
     }
   }
 
@@ -87,15 +107,33 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
    * - Otherwise, pops and runs the next task from that group (LIFO).
    */
   function drainOneTask(): void {
-    const nextGroup = queue.find((group) => group.length > 0);
-    if (!nextGroup) {
+    while (head < queue.length) {
+      const group = queue[head];
+      if (!group.cancelled && group.idx < group.tasks.length) {
+        break;
+      }
+
+      head++;
+    }
+
+    if (head >= queue.length) {
+      maybeCompact();
       return;
     }
 
-    const task = nextGroup.pop();
-    task?.();
+    const group = queue[head];
+    const task = group.tasks[group.idx];
+    group.idx += 1;
+
+    task();
 
     pendingTasksCount -= 1;
+
+    if (group.idx < 0 || group.cancelled) {
+      if ((head & 15) === 0) {
+        maybeCompact();
+      }
+    }
   }
 
   /**
@@ -106,9 +144,28 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
    */
   function cancel(id: number): void {
     const group = queue[id];
-    if (group) {
-      pendingTasksCount -= group.length;
-      group.length = 0;
+    if (!group || group.cancelled) {
+      return;
+    }
+
+    if (group.idx < group.tasks.length) {
+      pendingTasksCount -= group.tasks.length - group.idx;
+      group.idx = group.tasks.length;
+    }
+
+    group.cancelled = true;
+
+    maybeCompact();
+  }
+
+  /**
+   * Compact the queue buffer by dropping consumed prefix.
+   * Triggers when the head is reasonably far in and beyond half the array.
+   */
+  function maybeCompact(): void {
+    if (head > 64 && head > queue.length >> 1) {
+      queue.splice(0, head);
+      head = 0;
     }
   }
 
