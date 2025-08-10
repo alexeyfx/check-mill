@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { CheckMeMillionTimes } from '@check-mill/core';
-	import { onMount } from 'svelte';
+	import { CheckMeMillionTimes } from "@check-mill/core";
+	import { onMount } from "svelte";
 
 	let rootEl: HTMLElement;
 	let containerEl: HTMLElement;

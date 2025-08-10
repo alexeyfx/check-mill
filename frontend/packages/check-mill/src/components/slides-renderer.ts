@@ -1,89 +1,144 @@
+import type { WindowType } from "../utils";
 import type { AxisType } from "./axis";
 import { CheckboxFactory } from "./dom-factories";
 import type { LayoutMetrics } from "./layout";
-import type { ScrollMotionType } from "./scroll-motion";
+import { RafSequencer } from "./raf-sequencer";
+import { ScrollMotionType } from "./scroll-motion";
 import type { SlideType, SlidesCollectionType } from "./slides";
 import { Translate } from "./translate";
 
 export interface SlidesRendererType {
   appendSlides(slides: SlidesCollectionType): void;
-  fadeIn(slide: SlideType): void;
-  fadeOut(slide: SlideType): void;
-  syncOffset(motion: ScrollMotionType, slides: SlidesCollectionType): void;
+  fadeIn(slide: SlideType, motion: ScrollMotionType): void;
+  fadeOut(slide: SlideType, motion: ScrollMotionType): void;
+  syncOffset(slides: SlidesCollectionType): void;
 }
 
-const FADE_IN_CLASS_NAME = "_int_slide__container--visible";
-
 export function SlidesRenderer(
-  document: Document,
+  ownerDocument: Document,
+  ownerWindow: WindowType,
   root: HTMLElement,
   axis: AxisType,
   metrics: LayoutMetrics
 ): SlidesRendererType {
+  /**
+   * Translation helper for applying transform along the configured axis.
+   */
   const translate = Translate(axis);
 
-  const checkboxes: HTMLElement[] = [];
+  /**
+   * Prebuilt, reusable row fragments of checkboxes (one fragment per grid row).
+   * We clone these when appending to a slide to avoid rebuilding individual nodes.
+   */
+  const checkboxRowFragments: DocumentFragment[] = [];
 
-  const checkboxFactory = new CheckboxFactory(document);
+  /**
+   * Factory for creating checkbox DOM nodes at given (x, y) positions.
+   */
+  const checkboxFactory = new CheckboxFactory(ownerDocument);
 
-  const translateOffset = metrics.contentHeight - metrics.containerGap;
+  /**
+   * The maximum translation range per slide based on layout metrics.
+   * Used to scale each slide’s `viewportOffset` into pixels.
+   */
+  const slideTranslateRange = metrics.contentHeight - metrics.containerGap;
 
-  prerenderCheckboxes();
+  /**
+   * RAF-driven sequencer that runs at most one task per frame.
+   * A slightly lower FPS smooths IO/DOM pressure during heavy appends.
+   */
+  const rafSequencer = RafSequencer(ownerWindow, 60);
 
+  /**
+   * Tracks the active task-group id per slide index.
+   * When a new animation starts for a slide, the previous group is cancelled.
+   *
+   * key: slide.realIndex
+   * val: group id returned by `rafSequencer.enqueue`
+   */
+  const activeGroupIdBySlide = new Map<number, number>();
+
+  precomputeCheckboxRowFragments();
+
+  /**
+   * Append the native elements for all slides to the root container.
+   */
   function appendSlides(slides: SlidesCollectionType): void {
     for (const { nativeElement } of slides) {
       root.appendChild(nativeElement);
     }
   }
 
-  function prerenderCheckboxes(): void {
+  /**
+   * Precompute a row-aligned set of checkbox fragments covering the grid.
+   * Each fragment contains one row of checkboxes positioned on the grid.
+   */
+  function precomputeCheckboxRowFragments(): void {
     const { columns, rows, checkboxSize, gridGap } = metrics;
     const cellSize = checkboxSize + gridGap;
 
     for (let x = 0, y = 0, row = 0; row < rows; x = 0, y += cellSize, row += 1) {
+      const fragment = ownerDocument.createDocumentFragment();
+
       for (let col = 0; col < columns; col += 1, x += cellSize) {
-        checkboxes.push(checkboxFactory.create(x, y));
+        fragment.append(checkboxFactory.create(x, y));
       }
+
+      checkboxRowFragments.push(fragment);
     }
   }
 
-  function fadeIn(slide: SlideType): void {
-    const { columns, rows } = metrics;
-    const { nativeElement } = slide;
+  /**
+   * Animate a slide's entrance by appending one row fragment per frame.
+   * If an animation is already running for this slide, it is cancelled and
+   * the container is cleared before starting the new sequence.
+   */
+  function fadeIn(slide: SlideType, motion: ScrollMotionType): void {
+    const { direction } = motion;
+    const { realIndex, nativeElement } = slide;
 
+    const tasks: VoidFunction[] = [];
     const container = nativeElement.children[0] as HTMLElement;
 
-    for (let i = 0; i < rows; i += 1) {
-      const offset = i * columns;
-      requestAnimationFrame(() =>
-        checkboxes
-          .slice(offset, offset + columns)
-          .forEach((checkbox) => container.append(checkbox.cloneNode()))
-      );
+    if (activeGroupIdBySlide.has(realIndex)) {
+      rafSequencer.cancel(activeGroupIdBySlide.get(realIndex) as number);
     }
 
-    requestAnimationFrame(() => container.classList.add(FADE_IN_CLASS_NAME));
+    for (const fragment of checkboxRowFragments) {
+      tasks.push(() => container.append(fragment.cloneNode(true)));
+    }
+
+    if (direction === 1) {
+      tasks.reverse();
+    }
+
+    const groupId = rafSequencer.enqueue(tasks);
+    activeGroupIdBySlide.set(realIndex, groupId);
   }
 
-  function fadeOut(slide: SlideType): void {
-    const container = slide.nativeElement.children[0] as HTMLElement;
+  /**
+   * Stop any in-flight animation for the slide and clear its container.
+   * Uses a single-frame task to perform the DOM cleanup via the sequencer
+   * (keeps all DOM mutations serialized through the same pipeline).
+   */
+  function fadeOut(slide: SlideType, _motion: ScrollMotionType): void {
+    const { realIndex, nativeElement } = slide;
 
-    requestAnimationFrame(() => {
-      container.classList.remove(FADE_IN_CLASS_NAME);
-    });
+    const existingGroupId = activeGroupIdBySlide.get(realIndex);
+    if (existingGroupId) {
+      rafSequencer.cancel(existingGroupId);
+    }
 
-    container.addEventListener(
-      "transitionend",
-      () => requestAnimationFrame(() => container.replaceChildren()),
-      { once: true }
-    );
+    rafSequencer.enqueue([() => nativeElement.children[0].replaceChildren()]);
   }
 
-  function syncOffset(motion: ScrollMotionType, slides: SlidesCollectionType): void {
-    const { offset } = motion;
-
+  /**
+   * Apply translation to each slide based on its viewport offset.
+   * The offset is scaled by the precomputed `slideTranslateRange`.
+   */
+  function syncOffset(slides: SlidesCollectionType): void {
     for (const { nativeElement, viewportOffset } of slides) {
-      translate.to(nativeElement, offset + viewportOffset * translateOffset);
+      translate.to(nativeElement, viewportOffset * slideTranslateRange);
     }
   }
 

@@ -15,8 +15,9 @@ import {
   SlidesInView,
   SlideFactory,
   SlidesRenderer,
+  Styles,
+  Translate,
 } from "./components";
-import { Styles } from "./components/styles";
 import { EventReader, EventWriter, State } from "./primitives";
 import { throttle } from "./utils";
 
@@ -42,7 +43,7 @@ export async function CheckMeMillionTimes(
 
   /** Layout component */
   const layout = new Layout({
-    gridGap: 8,
+    gridGap: 12,
     checkboxSize: 24,
     slidePadding: [12, 12],
     containerGap: 12,
@@ -67,17 +68,20 @@ export async function CheckMeMillionTimes(
   /** Wheel gesture */
   const wheel = Wheel(root, axis);
 
+  /** Translate component */
+  const translate = Translate(axis);
+
   const slidesInView = SlidesInView(root, slides);
 
   const slidesLooper = SlidesLooper(viewport, layout.metrics(), motion, slides);
 
   const scrollLooper = ScrollLooper(motion, layout.metrics());
 
-  const renderLoop = RenderLoop(document, window, update, render);
+  const renderLoop = RenderLoop(document, window, update, render, 30);
 
   const styles = Styles(root, layout.metrics());
 
-  const renderer = SlidesRenderer(document, container, axis, layout.metrics());
+  const renderer = SlidesRenderer(document, window, container, axis, layout.metrics());
 
   const syncSlidesVisibilityThrottled = throttle(syncSlideVisibility, 300);
 
@@ -100,7 +104,7 @@ export async function CheckMeMillionTimes(
   }
 
   function update(_t: number, dt: number): void {
-    const integrated = applyFriction(motion.velocity, 0.6, dt);
+    const integrated = applyFriction(motion.velocity, 0.75, dt);
     const displacement = motion.current + integrated - motion.previous;
 
     motion.velocity = integrated;
@@ -120,9 +124,13 @@ export async function CheckMeMillionTimes(
     motion.offset = interpolated;
 
     scrollLooper.loop();
-    slidesLooper.loop();
-    renderer.syncOffset(motion, slides);
-    syncSlidesVisibilityThrottled();
+    slidesLooper.loop() && renderer.syncOffset(slides);
+
+    if (Math.abs(motion.velocity) < 10) {
+      syncSlidesVisibilityThrottled();
+    }
+
+    translate.to(container, motion.offset);
   }
 
   function applyFriction(velocity: number, friction: number, dt: number): number {
@@ -166,12 +174,15 @@ export async function CheckMeMillionTimes(
     let index = 0;
 
     for (const record of slidesInView.takeRecords()) {
+      const slide = slides[index];
+
       switch (record) {
         case -1:
-          renderer.fadeOut(slides[index]);
+          renderer.fadeOut(slide, motion);
           break;
         case 1:
-          renderer.fadeIn(slides[index]);
+          renderer.fadeIn(slide, motion);
+          break;
       }
 
       index += 1;

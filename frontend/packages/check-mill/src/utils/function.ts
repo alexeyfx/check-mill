@@ -33,3 +33,5 @@ export function throttle<T extends (...args: any[]) => void>(
     }
   };
 }
+
+export function noop(): void {}

@@ -95,7 +95,7 @@ export function RenderLoop(
    * Starts the game loop by requesting the first animation frame.
    */
   function start(): void {
-    animationId |= ownerWindow.requestAnimationFrame(tick);
+    animationId ||= ownerWindow.requestAnimationFrame(tick);
   }
 
   /**

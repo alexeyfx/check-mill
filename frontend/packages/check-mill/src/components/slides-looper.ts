@@ -5,7 +5,7 @@ import type { SlidesCollectionType } from "./slides";
 import type { ViewportType } from "./viewport";
 
 export interface SlidesLooperType {
-  loop(): void;
+  loop(): boolean;
 }
 
 /**
@@ -46,10 +46,11 @@ export function SlidesLooper(
 
   let lastOperation: VoidFunction = resetShift;
 
-  function loop(): void {
+  function loop(): boolean {
     const leftEdge = motion.offset;
     const rightedge = leftEdge + metrics.contentHeight;
 
+    let moved = false;
     let currentOperation: VoidFunction = resetShift;
 
     if (between(leftEdge, 0, viewportHeight)) {
@@ -61,11 +62,15 @@ export function SlidesLooper(
     }
 
     if (currentOperation !== lastOperation) {
+      moved = true;
+
       resetShift();
       currentOperation();
     }
 
     lastOperation = currentOperation;
+
+    return moved;
   }
 
   function shiftRight(): void {
