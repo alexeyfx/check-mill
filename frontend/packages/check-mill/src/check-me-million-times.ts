@@ -30,8 +30,6 @@ export async function CheckMeMillionTimes(
   root: HTMLElement,
   container: HTMLElement
 ): Promise<CheckMeMillionTimesType> {
-  root.classList.add("_int_scroll_area");
-
   /** Scroll direction component */
   const axis = Axis("y");
 

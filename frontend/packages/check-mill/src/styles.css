@@ -9,7 +9,7 @@
   touch-action: none;
 }
 
-._int_scroll_area::before {
+.container::before {
   content: "";
   position: absolute;
   inset: 0;
