@@ -23,9 +23,6 @@
   height: var(--slide-height);
   background: rgb(255, 255, 255);
   border-radius: 8px;
-  content-visibility: auto;
-  content-visibility: auto;
-  contain-intrinsic-size: var(--slide-width) var(--slide-height);
 }
 
 ._int_slide__container {
@@ -33,6 +30,8 @@
   width: 100%;
   height: 100%;
   padding: var(--slide-padding);
+  contain: content;
+  content-visibility: auto;
 }
 
 input[type="checkbox"] {

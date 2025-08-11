@@ -43,7 +43,7 @@ export async function CheckMeMillionTimes(
 
   /** Layout component */
   const layout = new Layout({
-    gridGap: 12,
+    gridGap: 8,
     checkboxSize: 24,
     slidePadding: [12, 12],
     containerGap: 12,
