@@ -1,43 +1,81 @@
-import { assert, type WindowType } from "../utils";
+/**
+ * Function executed by the sequencer.
+ * Return `true` when the task is complete (and should be removed).
+ * Return `false` to run again on a future eligible frame.
+ */
+type StepFn = () => boolean;
 
-export interface RafSequencerType {
-  enqueue(tasks: VoidFunction[]): number;
+/**
+ * Public API for a rAF‑driven **FIFO** sequencer.
+ * Executes **at most one task per animation frame**.
+ * The **oldest** enqueued task runs first. A task is retried every eligible
+ * frame until it returns `true`.
+ */
+interface RafSequencerType {
+  /**
+   * Enqueue a new step. The step is placed at the **back** of the queue and
+   * will run after older steps complete.
+   *
+   * @param step - Function that returns `true` when done, otherwise `false` to retry.
+   * @returns A handle (slot index) that can be passed to `cancel`.
+   */
+  enqueue(step: StepFn): number;
+
+  /**
+   * Cancel a previously enqueued step.
+   * Safe to call multiple times; no‑op for unknown or already cleared slots.
+   *
+   * @param id - The slot index returned by `enqueue`.
+   */
   cancel(id: number): void;
 }
 
-type Group = {
-  tasks: ReadonlyArray<VoidFunction>;
-  idx: number;
-  cancelled: boolean;
-};
-
 /**
- * Creates a lightweight, requestAnimationFrame-driven task sequencer.
- * Each animation frame, at most one task is executed across all groups.
+ * A lightweight requestAnimationFrame‑driven **FIFO** task sequencer.
  *
- * @param {WindowType} ownerWindow - The window object associated with the document.
- * @param {number} [fps=60] - The desired frames per second for the game loop (defaults to 60).
- * @returns A `RafSequencerType` with lifecycle and queue controls.
+ * - Runs **at most one** task per animation frame across the entire queue.
+ * - **Global FIFO**: the oldest enqueued task runs first.
+ * - A task is re‑run on each eligible frame until it returns `true`.
+ * - Uses a fixed‑size circular buffer (power‑of‑two capacity) for speed.
+ *
+ * @param ownerWindow - Host providing `requestAnimationFrame` / `cancelAnimationFrame`.
+ * @param capacity - Circular buffer capacity (must be a power of two).
+ *                   Increase if you expect more concurrent steps.
+ * @param fps - Target frames‑per‑second for execution (default 60).
+ *              Effective cadence is still bounded by the display’s refresh rate.
  */
-export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequencerType {
-  assert(fps > 0, `Invalid FPS value: ${fps}.`);
-
+export function RafSequencer(
+  ownerWindow: Window,
+  capacity: number = 64,
+  fps: number = 60
+): RafSequencerType {
   /**
-   * FIFO list of task groups.
-   * Each group is an array of `VoidFunction`s executed in LIFO order.
+   * Mask for cheap modulo arithmetic (index & MASK).
    */
-  const queue: Group[] = [];
+  const MASK = capacity - 1;
 
   /**
-   * Index of the current head group. We advance this as groups finish/cancel.
+   * Next write position in the circular buffer (the **back** of the queue).
    */
   let head = 0;
 
   /**
-   * Count of tasks still pending across all groups.
-   * Helps decide whether to continue scheduling frames.
+   * Index of the current **front** (oldest) live task.
+   * This slot is always tried first when executing.
    */
-  let pendingTasksCount = 0;
+  let top = capacity - 1;
+
+  /**
+   * Number of live tasks in the buffer.
+   * Drives scheduling and fast idle detection.
+   */
+  let liveCount = 0;
+
+  /**
+   * Circular buffer of steps.
+   * A slot is `undefined` if free or cleared.
+   */
+  const buffer = new Array<StepFn | undefined>(capacity).fill(undefined);
 
   /**
    * Timestamp of the last processed frame.
@@ -56,117 +94,104 @@ export function RafSequencer(ownerWindow: WindowType, fps: number = 60): RafSequ
   const fixedTimeStep = 1000 / fps;
 
   /**
-   * Enqueue a new group of tasks. The group is reversed so tasks are executed LIFO.
-   * If the loop is idle, it will be started.
-   *
-   * @param tasks - One or more functions to run, one per frame.
-   * @returns The index of the newly enqueued task group.
+   * Enqueue a new step at the **back** of the queue.
+   * Starts the loop if idle.
    */
-  function enqueue(tasks: VoidFunction[]): number {
-    const group = {
-      tasks,
-      idx: 0,
-      cancelled: false,
-    };
-    const groupIndex = queue.push(group) - 1;
-    pendingTasksCount += tasks.length;
+  function enqueue(step: StepFn): number {
+    head = dec(head);
+    buffer[head] = step;
+    liveCount += 1;
 
-    if (animationId === 0) {
-      animationId = ownerWindow.requestAnimationFrame(tick);
-    }
+    advanceTop();
+    scheduleIfNeeded();
 
-    return groupIndex;
+    return head;
   }
 
   /**
-   * The rAF callback. It gates task execution by `fixedTimeStep` and,
-   * when due, drains exactly one task across all groups.
+   * rAF callback. Gates execution by `fixedTimeStep` and,
+   * when due, executes exactly one step (the current **front**).
    */
   function tick(timeStamp: DOMHighResTimeStamp): void {
     if (lastTimeStamp === null) {
-      lastTimeStamp ||= timeStamp;
+      lastTimeStamp = timeStamp;
     }
 
     const elapsed = timeStamp - lastTimeStamp;
     if (elapsed >= fixedTimeStep) {
       lastTimeStamp = timeStamp;
-      drainOneTask();
+      runTopOnce();
     }
 
     animationId = 0;
 
-    if (pendingTasksCount > 0) {
+    if (liveCount > 0) {
+      scheduleIfNeeded();
+    } else {
+      lastTimeStamp = null;
+    }
+  }
+
+  /**
+   * Execute the current **front** step once.
+   * If it returns `true`, remove it and advance the front.
+   * If it returns `false`, it remains at the front and will run again next eligible frame.
+   */
+  function runTopOnce(): void {
+    const step = buffer[top];
+    if (!step) return;
+
+    if (step()) {
+      cancel(top);
+    }
+  }
+
+  /**
+   * Cancel the step stored at the given slot.
+   * No‑op if already empty.
+   */
+  function cancel(id: number): void {
+    const idx = id & MASK;
+    if (buffer[idx] === undefined) return;
+
+    buffer[idx] = undefined;
+    liveCount -= 1;
+
+    advanceTop();
+  }
+
+  /**
+   * Advance `top` to the next **front** (oldest) live slot.
+   * Resets indices if no steps remain.
+   */
+  function advanceTop(): void {
+    if (liveCount === 0) {
+      head = 0;
+      top = 0;
+      lastTimeStamp = null;
+      return;
+    }
+
+    let guard = capacity;
+    while (buffer[top] === undefined && guard-- > 0) {
+      top = dec(top);
+    }
+  }
+
+  /**
+   * Schedule the next animation frame if not already scheduled.
+   */
+  function scheduleIfNeeded(): void {
+    if (animationId === 0 && liveCount > 0) {
       animationId = ownerWindow.requestAnimationFrame(tick);
     }
   }
 
   /**
-   * Called by the render loop each frame. Executes at most one task:
-   * - Finds the first non-empty group.
-   * - If none found, the loop is stopped to avoid unnecessary frames.
-   * - Otherwise, pops and runs the next task from that group (LIFO).
+   * Wrap‑around decrement for ring indices.
    */
-  function drainOneTask(): void {
-    while (head < queue.length) {
-      const group = queue[head];
-      if (!group.cancelled && group.idx < group.tasks.length) {
-        break;
-      }
-
-      head++;
-    }
-
-    if (head >= queue.length) {
-      maybeCompact();
-      return;
-    }
-
-    const group = queue[head];
-    const task = group.tasks[group.idx];
-    group.idx += 1;
-
-    task();
-
-    pendingTasksCount -= 1;
-
-    if (group.idx < 0 || group.cancelled) {
-      if ((head & 15) === 0) {
-        maybeCompact();
-      }
-    }
-  }
-
-  /**
-   * Cancel all remaining tasks in a given group id.
-   * No-op if the id is invalid or already empty.
-   *
-   * @param id - Group id previously returned by `enqueue`.
-   */
-  function cancel(id: number): void {
-    const group = queue[id];
-    if (!group || group.cancelled) {
-      return;
-    }
-
-    if (group.idx < group.tasks.length) {
-      pendingTasksCount -= group.tasks.length - group.idx;
-      group.idx = group.tasks.length;
-    }
-
-    group.cancelled = true;
-
-    maybeCompact();
-  }
-
-  /**
-   * Compact the queue buffer by dropping consumed prefix.
-   * Triggers when the head is reasonably far in and beyond half the array.
-   */
-  function maybeCompact(): void {
-    if (head > 64 && head > queue.length >> 1) {
-      queue.splice(0, head);
-      head = 0;
-    }
+  function dec(i: number): number {
+    return (i - 1) & MASK;
   }
 
   return { enqueue, cancel };

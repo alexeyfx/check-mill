@@ -47,7 +47,7 @@ export function SlidesRenderer(
    * RAF-driven sequencer that runs at most one task per frame.
    * A slightly lower FPS smooths IO/DOM pressure during heavy appends.
    */
-  const rafSequencer = RafSequencer(ownerWindow, 60);
+  const rafSequencer = RafSequencer(ownerWindow, 64, 60);
 
   /**
    * Tracks the active task-group id per slide index.
@@ -56,7 +56,7 @@ export function SlidesRenderer(
    * key: slide.realIndex
    * val: group id returned by `rafSequencer.enqueue`
    */
-  const activeGroupIdBySlide = new Map<number, number>();
+  const activeGroupIdBySlide = new Uint16Array(metrics.totalSlides).fill(-1);
 
   precomputeCheckboxRowFragments();
 
@@ -64,8 +64,8 @@ export function SlidesRenderer(
    * Append the native elements for all slides to the root container.
    */
   function appendSlides(slides: SlidesCollectionType): void {
-    for (const { nativeElement } of slides) {
-      root.appendChild(nativeElement);
+    for (let i = 0; i < slides.length; i++) {
+      root.appendChild(slides[i].nativeElement);
     }
   }
 
@@ -93,27 +93,20 @@ export function SlidesRenderer(
    * If an animation is already running for this slide, it is cancelled and
    * the container is cleared before starting the new sequence.
    */
-  function fadeIn(slide: SlideType, motion: ScrollMotionType): void {
-    const { direction } = motion;
+  function fadeIn(slide: SlideType, _motion: ScrollMotionType): void {
     const { realIndex, nativeElement } = slide;
 
-    const tasks: VoidFunction[] = [];
-    const container = nativeElement.children[0] as HTMLElement;
+    let index = 0;
+    const lastIndex = checkboxRowFragments.length - 1;
+    const container = nativeElement.firstElementChild as HTMLElement;
 
-    if (activeGroupIdBySlide.has(realIndex)) {
-      rafSequencer.cancel(activeGroupIdBySlide.get(realIndex) as number);
-    }
+    const step = (): boolean => {
+      container.append(checkboxRowFragments[index++].cloneNode(true));
+      return index > lastIndex;
+    };
 
-    for (const fragment of checkboxRowFragments) {
-      tasks.push(() => container.append(fragment.cloneNode(true)));
-    }
-
-    if (direction === 1) {
-      tasks.reverse();
-    }
-
-    const groupId = rafSequencer.enqueue(tasks);
-    activeGroupIdBySlide.set(realIndex, groupId);
+    const groupId = rafSequencer.enqueue(step);
+    activeGroupIdBySlide[realIndex] = groupId;
   }
 
   /**
@@ -124,12 +117,18 @@ export function SlidesRenderer(
   function fadeOut(slide: SlideType, _motion: ScrollMotionType): void {
     const { realIndex, nativeElement } = slide;
 
-    const existingGroupId = activeGroupIdBySlide.get(realIndex);
-    if (existingGroupId) {
-      rafSequencer.cancel(existingGroupId);
+    const pendingGroupId = activeGroupIdBySlide[realIndex];
+    if (pendingGroupId !== -1) {
+      rafSequencer.cancel(pendingGroupId);
     }
 
-    rafSequencer.enqueue([() => nativeElement.children[0].replaceChildren()]);
+    const container = nativeElement.firstElementChild as HTMLElement;
+    const cleanup = (): boolean => {
+      container.replaceChildren();
+      return true;
+    };
+
+    activeGroupIdBySlide[realIndex] = rafSequencer.enqueue(cleanup);
   }
 
   /**
@@ -137,8 +136,10 @@ export function SlidesRenderer(
    * The offset is scaled by the precomputed `slideTranslateRange`.
    */
   function syncOffset(slides: SlidesCollectionType): void {
-    for (const { nativeElement, viewportOffset } of slides) {
-      translate.to(nativeElement, viewportOffset * slideTranslateRange);
+    const range = slideTranslateRange;
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      translate.to(slide.nativeElement, slide.viewportOffset * range);
     }
   }
 
