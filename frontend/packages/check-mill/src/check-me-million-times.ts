@@ -15,9 +15,13 @@ import {
   SlidesInView,
   SlideFactory,
   SlidesRenderer,
-  Styles,
   Translate,
 } from "./components";
+import {
+  writeVariables,
+  enableSlidePointerEvents,
+  disableSlidePointerEvents,
+} from "./components/styles";
 import { EventReader, EventWriter, State } from "./primitives";
 import { throttle } from "./utils";
 
@@ -77,8 +81,6 @@ export async function CheckMeMillionTimes(
 
   const renderLoop = RenderLoop(document, window, update, render, 30);
 
-  const styles = Styles(root, layout.metrics());
-
   const renderer = SlidesRenderer(document, window, container, axis, layout.metrics());
 
   const syncSlidesVisibilityThrottled = throttle(syncSlideVisibility, 300);
@@ -86,7 +88,11 @@ export async function CheckMeMillionTimes(
   await Promise.resolve().then(init).then(afterInit);
 
   async function init(): Promise<void> {
-    const components = [slidesInView, viewport, styles, drag, wheel];
+    const components = [slidesInView, viewport, drag, wheel];
+
+    writeVariables(root, layout.metrics());
+    enableSlidePointerEvents(root);
+
     await Promise.all(components.map((m) => m.init()));
   }
 
@@ -124,9 +130,7 @@ export async function CheckMeMillionTimes(
     scrollLooper.loop();
     slidesLooper.loop() && renderer.syncOffset(slides);
 
-    if (Math.abs(motion.velocity) < 10) {
-      syncSlidesVisibilityThrottled();
-    }
+    syncSlidesVisibilityThrottled();
 
     translate.to(container, motion.offset);
   }
@@ -153,6 +157,7 @@ export async function CheckMeMillionTimes(
       case GestureState.Initialize:
         motion.velocity = 0;
         appState.set(AppStates.GestureRunning);
+        disableSlidePointerEvents(root);
         break;
 
       case GestureState.Update:
@@ -162,6 +167,7 @@ export async function CheckMeMillionTimes(
       case GestureState.Finalize:
         motion.velocity = delta;
         appState.unset(AppStates.GestureRunning);
+        enableSlidePointerEvents(root);
         break;
     }
 
@@ -169,21 +175,17 @@ export async function CheckMeMillionTimes(
   }
 
   function syncSlideVisibility(): void {
-    let index = 0;
+    const records = slidesInView.takeRecords();
 
-    for (const record of slidesInView.takeRecords()) {
-      const slide = slides[index];
-
-      switch (record) {
+    for (let i = 0; i < records.length; i++) {
+      switch (records[i]) {
         case -1:
-          renderer.fadeOut(slide, motion);
+          renderer.fadeOut(slides[i], motion);
           break;
         case 1:
-          renderer.fadeIn(slide, motion);
+          renderer.fadeIn(slides[i], motion);
           break;
       }
-
-      index += 1;
     }
   }
 

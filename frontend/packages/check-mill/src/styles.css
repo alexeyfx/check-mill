@@ -23,6 +23,7 @@
   height: var(--slide-height);
   background: rgb(255, 255, 255);
   border-radius: 8px;
+  pointer-events: var(--slide-pointer-events, "auto");
 }
 
 ._int_slide__container {
