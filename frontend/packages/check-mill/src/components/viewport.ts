@@ -3,7 +3,7 @@ import { DisposableStore, TypedEvent } from "../primitives";
 import type { Component } from "./component";
 
 export interface ViewportType extends Component {
-  resized: EventReader<ResizeObserverEntry[]>;
+  resized: EventReader<DOMRect>;
   measure(): DOMRect;
 }
 
@@ -29,7 +29,7 @@ export function Viewport(root: HTMLElement): ViewportType {
   /**
    * Returns a reader for the resize event stream.
    */
-  const resized = new TypedEvent<ResizeObserverEntry[]>();
+  const resized = new TypedEvent<DOMRect>();
 
   function init(): Promise<void> {
     resizeObserver = new ResizeObserver(onResize);
@@ -44,9 +44,9 @@ export function Viewport(root: HTMLElement): ViewportType {
     return memoRect;
   }
 
-  function onResize(entries: ResizeObserverEntry[]): void {
+  function onResize(): void {
     memoRect = root.getBoundingClientRect();
-    resized.emit(entries);
+    resized.emit(memoRect);
   }
 
   function destroy(): Promise<void> {

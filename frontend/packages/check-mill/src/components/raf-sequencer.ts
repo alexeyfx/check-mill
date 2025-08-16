@@ -3,7 +3,7 @@
  * Return `true` when the task is complete (and should be removed).
  * Return `false` to run again on a future eligible frame.
  */
-type StepFn = () => boolean;
+export type StepFn = () => boolean;
 
 /**
  * Public API for a rAF‑driven **FIFO** sequencer.

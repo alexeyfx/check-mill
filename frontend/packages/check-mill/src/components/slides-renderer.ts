@@ -2,7 +2,7 @@ import type { WindowType } from "../utils";
 import type { AxisType } from "./axis";
 import { CheckboxFactory } from "./dom-factories";
 import type { LayoutMetrics } from "./layout";
-import { RafSequencer } from "./raf-sequencer";
+import { RafSequencer, StepFn } from "./raf-sequencer";
 import { ScrollMotionType } from "./scroll-motion";
 import type { SlideType, SlidesCollectionType } from "./slides";
 import { Translate } from "./translate";
@@ -31,11 +31,6 @@ export function SlidesRenderer(
    * We clone these when appending to a slide to avoid rebuilding individual nodes.
    */
   const checkboxRowFragments: DocumentFragment[] = [];
-
-  /**
-   * Factory for creating checkbox DOM nodes at given (x, y) positions.
-   */
-  const checkboxFactory = new CheckboxFactory(ownerDocument);
 
   /**
    * The maximum translation range per slide based on layout metrics.
@@ -76,6 +71,7 @@ export function SlidesRenderer(
   function precomputeCheckboxRowFragments(): void {
     const { columns, rows, checkboxSize, gridGap } = metrics;
     const cellSize = checkboxSize + gridGap;
+    const checkboxFactory = new CheckboxFactory(ownerDocument);
 
     for (let x = 0, y = 0, row = 0; row < rows; x = 0, y += cellSize, row += 1) {
       const fragment = ownerDocument.createDocumentFragment();
@@ -93,14 +89,14 @@ export function SlidesRenderer(
    * If an animation is already running for this slide, it is cancelled and
    * the container is cleared before starting the new sequence.
    */
-  function fadeIn(slide: SlideType, _motion: ScrollMotionType): void {
+  function fadeIn(slide: SlideType): void {
     const { realIndex, nativeElement } = slide;
 
     let index = 0;
     const lastIndex = checkboxRowFragments.length - 1;
     const container = nativeElement.firstElementChild as HTMLElement;
 
-    const step = (): boolean => {
+    const step: StepFn = () => {
       container.append(checkboxRowFragments[index++].cloneNode(true));
       return index > lastIndex;
     };

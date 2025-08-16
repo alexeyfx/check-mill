@@ -13,9 +13,9 @@ export interface SlidesInViewType extends Component {
  * @returns {SlideInViewType}
  */
 export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): SlidesInViewType {
-  let lastRecords = new Array(slides.length).fill(0);
+  let lastRecords = new Uint8Array(slides.length).fill(1);
 
-  let currentRecords = new Array(slides.length).fill(0);
+  let currentRecords = new Uint8Array(slides.length).fill(1);
 
   /**
    * Disposable store for managing cleanup functions.
@@ -60,14 +60,14 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
       diff[i] = currentRecords[i] - lastRecords[i];
     }
 
-    lastRecords = [...currentRecords];
+    lastRecords.set(currentRecords);
 
     return diff;
   }
 
   function handleIntersection(entries: IntersectionObserverEntry[]): void {
     for (const { target, isIntersecting } of entries) {
-      currentRecords[+target.getAttribute("data-v-id")!] = +isIntersecting;
+      currentRecords[+target.getAttribute("data-v-id")!] = +isIntersecting + 1;
     }
   }
 
