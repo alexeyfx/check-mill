@@ -102,8 +102,6 @@ export function RenderLoop(
    * Stops the game loop by canceling the ongoing animation frame.
    */
   function stop(): void {
-    ownerWindow.cancelAnimationFrame(animationId);
-
     lastTimeStamp = null;
     accumulator = 0;
     animationId = 0;
