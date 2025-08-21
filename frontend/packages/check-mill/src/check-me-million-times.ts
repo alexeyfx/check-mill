@@ -147,7 +147,7 @@ export async function CheckMeMillionTimes(
     motion.current += event.delta;
     motion.velocity = 0;
 
-    renderLoop.start();
+    renderLoop.frame();
   }
 
   function handleDragScroll(event: GestureEvent): void {

@@ -9,6 +9,7 @@ import type { Component } from "./component";
  */
 export interface RenderLoopType extends Component {
   start(): void;
+  frame(): void;
   stop(): void;
 }
 
@@ -43,7 +44,7 @@ export function RenderLoop(
   /**
    * Stores the animation frame ID for canceling the animation
    */
-  let animationId: number = 0;
+  let animationId: number | null = null;
 
   /**
    * Tracks the timestamp of the last frame, used to calculate the elapsed time
@@ -95,16 +96,25 @@ export function RenderLoop(
    * Starts the game loop by requesting the first animation frame.
    */
   function start(): void {
-    animationId ||= ownerWindow.requestAnimationFrame(tick);
+    animationId ??= ownerWindow.requestAnimationFrame(tick);
+  }
+
+  /**
+   * Execute a single update + render cycle on the next animation frame.
+   */
+  function frame(): void {
+    if (animationId === null) {
+      ownerWindow.requestAnimationFrame(tick);
+    }
   }
 
   /**
    * Stops the game loop by canceling the ongoing animation frame.
    */
   function stop(): void {
-    lastTimeStamp = null;
     accumulator = 0;
-    animationId = 0;
+    animationId = null;
+    lastTimeStamp = null;
   }
 
   /**
@@ -135,9 +145,7 @@ export function RenderLoop(
     const alpha = accumulator / fixedTimeStep;
     render(alpha);
 
-    if (animationId) {
-      animationId = ownerWindow.requestAnimationFrame(tick);
-    }
+    animationId ??= ownerWindow.requestAnimationFrame(tick);
   }
 
   /**
@@ -156,6 +164,7 @@ export function RenderLoop(
     init,
     destroy,
     start,
+    frame,
     stop,
   };
 }
