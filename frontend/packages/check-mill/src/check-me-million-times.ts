@@ -81,7 +81,7 @@ export async function CheckMeMillionTimes(
 
   const renderLoop = RenderLoop(document, window, update, render, 30);
 
-  const renderer = SlidesRenderer(document, window, container, axis, layout.metrics());
+  const renderer = SlidesRenderer(document, container, axis, layout.metrics());
 
   const syncSlidesVisibilityThrottled = throttle(syncSlideVisibility, 300);
 

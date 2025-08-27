@@ -4,7 +4,6 @@ export * from "./component";
 export * from "./dom-factories";
 export * from "./gestures";
 export * from "./layout";
-export * from "./raf-sequencer";
 export * from "./render-loop";
 export * from "./scroll-looper";
 export * from "./scroll-motion";

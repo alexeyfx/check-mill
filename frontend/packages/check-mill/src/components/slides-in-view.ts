@@ -30,7 +30,7 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
     const observer = new IntersectionObserver(handleIntersection, {
       root,
       rootMargin: "0px",
-      threshold: 0.1,
+      threshold: 0,
     });
 
     for (const { nativeElement, realIndex } of slides) {

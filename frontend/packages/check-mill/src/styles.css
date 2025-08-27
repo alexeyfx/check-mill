@@ -33,22 +33,19 @@
   padding: var(--slide-padding);
   contain: content;
   content-visibility: auto;
+  opacity: 0;
+  transition: 0.3s ease-in-out;
+}
+
+.fade-in {
+  opacity: 1;
 }
 
 input[type="checkbox"] {
   position: absolute;
   width: var(--checkbox-size);
   aspect-ratio: 1;
-  will-change: opacity;
   transform: translateZ(0);
-  animation: 0.25s ease 0s 1 normal none running fadeIn;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  input[type="checkbox"] {
-    opacity: 1;
-    animation: none;
-  }
 }
 
 @keyframes fadeIn {
