@@ -145,7 +145,9 @@ export function RenderLoop(
     const alpha = accumulator / fixedTimeStep;
     render(alpha);
 
-    animationId ??= ownerWindow.requestAnimationFrame(tick);
+    if (animationId !== null) {
+      animationId = ownerWindow.requestAnimationFrame(tick);
+    }
   }
 
   /**
