@@ -30,7 +30,7 @@ export function ScrollMotion(): ScrollMotionType {
  * Apply a uniform delta to ScrollMotion.
  *
  * @param motion - ScrollMotion to advance.
- * @param delta - Amount to increment each vector by.
+ * @param delta - Amount to increment each value by.
  */
 export function move(motion: ScrollMotionType, delta: number): void {
   motion.current += delta;

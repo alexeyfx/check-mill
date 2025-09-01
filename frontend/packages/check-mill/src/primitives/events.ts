@@ -132,17 +132,6 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
   };
 
   /**
-   * Pipes all emitted events to `EventWriter` instance.
-   * Essentially forwards every event from this emitter to the target emitter.
-   *
-   * @param writer - `EventWriter` instance to pipe this emitter's events into.
-   * @returns A disposable function that, when called, stops the piping of events.
-   */
-  public pipe = (writer: EventWriter<E>): Disposable => {
-    return this.register((event) => writer.emit(event));
-  };
-
-  /**
    * Clears every persistent and one-time listener, preventing them from being called.
    */
   public clear = (): void => {
@@ -169,10 +158,7 @@ export type EventMapFromTarget<T> = T extends Window
  *
  * @returns A **`Disposable`** function; call it to detach the listener.
  */
-export function event<
-  T extends EventTarget,
-  K extends keyof EventMapFromTarget<T>
->(
+export function event<T extends EventTarget, K extends keyof EventMapFromTarget<T>>(
   target: T,
   type: K,
   listener: Listener<EventMapFromTarget<T>[K]>,
@@ -181,6 +167,5 @@ export function event<
   const typedListener = listener as unknown as EventListener;
   target.addEventListener(type as string, typedListener, options);
 
-  return () =>
-    target.removeEventListener(type as string, typedListener, options);
+  return () => target.removeEventListener(type as string, typedListener, options);
 }
