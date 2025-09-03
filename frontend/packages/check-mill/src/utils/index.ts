@@ -1,4 +1,3 @@
-export * from "./animation";
 export * from "./array";
 export * from "./dom";
 export * from "./environment";
@@ -8,3 +7,4 @@ export * from "./math";
 export * from "./performance";
 export * from "./styles";
 export * from "./types";
+export * from "./supports";

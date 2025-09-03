@@ -1,5 +1,5 @@
-import type { GestureEvent } from "./components";
 import {
+  type GestureEvent,
   AppStates,
   Axis,
   Drag,
@@ -16,13 +16,11 @@ import {
   SlideFactory,
   SlidesRenderer,
   Translate,
-} from "./components";
-import {
-  writeVariables,
-  enableSlidePointerEvents,
   disableSlidePointerEvents,
-} from "./components/styles";
-import { EventReader, EventWriter, State } from "./primitives";
+  enableSlidePointerEvents,
+  writeVariables,
+} from "./components";
+import { type EventReader, type EventWriter, State } from "./primitives";
 import { throttle } from "./utils";
 
 export interface CheckMeMillionTimesType {
@@ -98,13 +96,9 @@ export async function CheckMeMillionTimes(
 
   async function afterInit(): Promise<void> {
     renderer.appendSlides(slides);
-
+    renderLoop.start();
     drag.register(handleDragScroll);
     wheel.register(handleWheelScroll);
-
-    renderLoop.start();
-
-    console.log("Running...");
   }
 
   function update(_t: number, dt: number): void {
@@ -119,12 +113,11 @@ export async function CheckMeMillionTimes(
 
   function render(alpha: number): void {
     const isSettled = Math.abs(motion.velocity) < 0.1;
-    const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
-
     if (isSettled || appState.is(AppStates.GestureRunning)) {
-      renderLoop.stop();
+      return;
     }
 
+    const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
     motion.offset = interpolated;
 
     scrollLooper.loop();
@@ -135,19 +128,10 @@ export async function CheckMeMillionTimes(
     translate.to(container, motion.offset);
   }
 
-  function applyFriction(velocity: number, friction: number, dt: number): number {
-    const decay = 1 - Math.pow(1 - friction, dt / 1000);
-    const next = velocity * (1 - decay);
-
-    return next;
-  }
-
   function handleWheelScroll(event: GestureEvent): void {
     motion.previous = motion.current;
     motion.current += event.delta;
     motion.velocity = 0;
-
-    renderLoop.frame();
   }
 
   function handleDragScroll(event: GestureEvent): void {
@@ -170,23 +154,29 @@ export async function CheckMeMillionTimes(
         enableSlidePointerEvents(root);
         break;
     }
-
-    renderLoop.start();
   }
 
   function syncSlideVisibility(): void {
     const records = slidesInView.takeRecords();
 
-    for (let i = 0; i < records.length; i++) {
-      switch (records[i]) {
+    for (const record of records) {
+      switch (record) {
         case -1:
-          renderer.fadeOut(slides[i], motion);
+          renderer.fadeOut(slides[record], motion);
           break;
+
         case 1:
-          renderer.fadeIn(slides[i], motion);
+          renderer.fadeIn(slides[record], motion);
           break;
       }
     }
+  }
+
+  function applyFriction(velocity: number, friction: number, dt: number): number {
+    const decay = 1 - Math.pow(1 - friction, dt / 1000);
+    const next = velocity * (1 - decay);
+
+    return next;
   }
 
   return {

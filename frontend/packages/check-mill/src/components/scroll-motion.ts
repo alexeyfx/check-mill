@@ -38,3 +38,11 @@ export function move(motion: ScrollMotionType, delta: number): void {
   motion.offset += delta;
   motion.target += delta;
 }
+
+export function initial(motion: ScrollMotionType): void {
+  const ref = ScrollMotion();
+  for (const field in ref) {
+    const typedF = field as keyof ScrollMotionType;
+    motion[typedF] = ref[typedF];
+  }
+}

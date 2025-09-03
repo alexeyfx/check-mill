@@ -1,5 +1,5 @@
 import { px } from "../utils";
-import { LayoutMetrics } from "./layout";
+import { type LayoutMetrics } from "./layout";
 
 const enum CSSVariables {
   CHECKBOX_SIZE = "--checkbox-size",

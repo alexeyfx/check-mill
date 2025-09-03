@@ -11,5 +11,6 @@ export * from "./slides";
 export * from "./slides-in-view";
 export * from "./slides-looper";
 export * from "./slides-renderer";
+export * from "./styles";
 export * from "./translate";
 export * from "./viewport";

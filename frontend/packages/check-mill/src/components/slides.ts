@@ -1,5 +1,5 @@
-import type { SlideFactory } from "./dom-factories";
-import type { LayoutMetrics } from "./layout";
+import { type SlideFactory } from "./dom-factories";
+import { type LayoutMetrics } from "./layout";
 
 export interface SlideType {
   readonly nativeElement: HTMLElement;

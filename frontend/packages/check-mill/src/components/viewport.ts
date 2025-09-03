@@ -1,6 +1,5 @@
-import type { EventReader } from "../primitives";
-import { DisposableStore, TypedEvent } from "../primitives";
-import type { Component } from "./component";
+import { type EventReader, DisposableStore, TypedEvent } from "../primitives";
+import { type Component } from "./component";
 
 export interface ViewportType extends Component {
   resized: EventReader<DOMRect>;
@@ -31,12 +30,25 @@ export function Viewport(root: HTMLElement): ViewportType {
    */
   const resized = new TypedEvent<DOMRect>();
 
+  /**
+   * @internal
+   * Component lifecycle method.
+   */
   function init(): Promise<void> {
     resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(root);
 
     disposable.pushStatic(resized.clear, () => resizeObserver.disconnect());
 
+    return Promise.resolve();
+  }
+
+  /**
+   * @internal
+   * Component lifecycle method.
+   */
+  function destroy(): Promise<void> {
+    disposable.flushAll();
     return Promise.resolve();
   }
 
@@ -47,11 +59,6 @@ export function Viewport(root: HTMLElement): ViewportType {
   function onResize(): void {
     memoRect = root.getBoundingClientRect();
     resized.emit(memoRect);
-  }
-
-  function destroy(): Promise<void> {
-    disposable.flushAll();
-    return Promise.resolve();
   }
 
   return {
