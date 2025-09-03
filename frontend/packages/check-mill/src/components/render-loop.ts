@@ -1,27 +1,24 @@
 import { DisposableStore, event } from "../primitives";
-import { assert } from "../utils";
-import type { WindowType } from "../utils";
-import type { Component } from "./component";
+import { type WindowType, assert } from "../utils";
+import { type Component } from "./component";
 
 /**
  * Represents the interface for a Render Loop that can be started and stopped.
- * Extends the `Component` interface.
  */
 export interface RenderLoopType extends Component {
   start(): void;
-  frame(): void;
   stop(): void;
 }
 
 /**
- * Creates a Render Loop system that controls the flow of game updates and rendering.
- * The game loop runs updates at a fixed timestep and performs rendering with a variable alpha based on the timestep.
+ * Creates a Render Loop system that controls the flow of updates and rendering.
+ * The render loop runs updates at a fixed timestep and performs rendering with a variable alpha based on the timestep.
  *
  * @param {Document} ownerDocument - The document object associated with the window.
  * @param {WindowType} ownerWindow - The window object associated with the document.
- * @param {(t: number, dt: number) => void} update - A function that performs the game update logic.
- * @param {(alpha: number) => void} render - A function that renders the game state.
- * @param {number} [fps=60] - The desired frames per second for the game loop (defaults to 60).
+ * @param {(t: number, dt: number) => void} update - A function that performs the app update logic.
+ * @param {(alpha: number) => void} render - A function that renders the app state.
+ * @param {number} [fps=60] - The desired frames per second for the render loop (defaults to 60).
  * @returns {RenderLoopType} A RenderLoop instance with start and stop methods to control the loop.
  *
  * @see [Game Loop Pattern](https://gameprogrammingpatterns.com/game-loop.html)
@@ -52,7 +49,7 @@ export function RenderLoop(
   let lastTimeStamp: number | null = null;
 
   /**
-   * Tracks the simulated game time
+   * Tracks the simulated time
    */
   let simulationTime: number = 0;
 
@@ -62,7 +59,7 @@ export function RenderLoop(
   const maxUpdatesPerFrame = 5;
 
   /**
-   * Fixed time step for each game update (in milliseconds)
+   * Fixed time step for each update (in milliseconds)
    */
   const fixedTimeStep = 1000 / fps;
 
@@ -93,32 +90,25 @@ export function RenderLoop(
   }
 
   /**
-   * Starts the game loop by requesting the first animation frame.
+   * Starts the loop by requesting the first animation frame.
    */
   function start(): void {
     animationId ??= ownerWindow.requestAnimationFrame(tick);
   }
 
   /**
-   * Execute a single update + render cycle on the next animation frame.
-   */
-  function frame(): void {
-    if (animationId === null) {
-      ownerWindow.requestAnimationFrame(tick);
-    }
-  }
-
-  /**
-   * Stops the game loop by canceling the ongoing animation frame.
+   * Stops the loop by canceling the ongoing animation frame.
    */
   function stop(): void {
+    ownerWindow.cancelAnimationFrame(animationId ?? 0);
+
     accumulator = 0;
     animationId = null;
     lastTimeStamp = null;
   }
 
   /**
-   * The main game loop that runs at a fixed timestep. It performs the update and render logic
+   * The main loop that runs at a fixed timestep. It performs the update and render logic
    * based on the accumulated time.
    *
    * @param {DOMHighResTimeStamp} timeStamp - The current timestamp of the animation frame.
@@ -145,14 +135,12 @@ export function RenderLoop(
     const alpha = accumulator / fixedTimeStep;
     render(alpha);
 
-    if (animationId !== null) {
-      animationId = ownerWindow.requestAnimationFrame(tick);
-    }
+    animationId = ownerWindow.requestAnimationFrame(tick);
   }
 
   /**
    * Handles visibility changes of the window.
-   * Stops the game loop when the window is hidden.
+   * Stops the loop when the window is hidden.
    *
    * @param {Event} _event - The visibility change event.
    */
@@ -166,7 +154,6 @@ export function RenderLoop(
     init,
     destroy,
     start,
-    frame,
     stop,
   };
 }

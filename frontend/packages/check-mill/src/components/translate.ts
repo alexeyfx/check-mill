@@ -1,4 +1,4 @@
-import type { AxisType } from "./axis";
+import { type AxisType } from "./axis";
 
 export type TranslateType = {
   to: (element: HTMLElement, target: number) => void;

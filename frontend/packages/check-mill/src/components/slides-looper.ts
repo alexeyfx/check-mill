@@ -1,8 +1,8 @@
 import { between } from "../utils";
 import { LayoutMetrics } from "./layout";
-import type { ScrollMotionType } from "./scroll-motion";
-import type { SlidesCollectionType } from "./slides";
-import type { ViewportType } from "./viewport";
+import { type ScrollMotionType } from "./scroll-motion";
+import { type SlidesCollectionType } from "./slides";
+import { type ViewportType } from "./viewport";
 
 export interface SlidesLooperType {
   loop(): boolean;

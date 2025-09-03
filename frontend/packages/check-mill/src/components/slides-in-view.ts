@@ -1,6 +1,6 @@
-import type { SlidesCollectionType } from "./slides";
-import type { Component } from "./component";
 import { DisposableStore } from "../primitives";
+import { type Component } from "./component";
+import { type SlidesCollectionType } from "./slides";
 
 export interface SlidesInViewType extends Component {
   takeRecords(): number[];
@@ -13,9 +13,9 @@ export interface SlidesInViewType extends Component {
  * @returns {SlideInViewType}
  */
 export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): SlidesInViewType {
-  let lastRecords = new Uint8Array(slides.length).fill(1);
+  const lastRecords = new Uint8Array(slides.length).fill(1);
 
-  let currentRecords = new Uint8Array(slides.length).fill(1);
+  const currentRecords = new Uint8Array(slides.length).fill(1);
 
   /**
    * Disposable store for managing cleanup functions.

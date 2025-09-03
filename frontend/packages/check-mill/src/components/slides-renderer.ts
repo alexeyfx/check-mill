@@ -1,8 +1,8 @@
-import type { AxisType } from "./axis";
+import { type AxisType } from "./axis";
 import { CheckboxFactory } from "./dom-factories";
-import type { LayoutMetrics } from "./layout";
+import { type LayoutMetrics } from "./layout";
 import { ScrollMotionType } from "./scroll-motion";
-import type { SlideType, SlidesCollectionType } from "./slides";
+import { type SlideType, type SlidesCollectionType } from "./slides";
 import { Translate } from "./translate";
 
 export interface SlidesRendererType {

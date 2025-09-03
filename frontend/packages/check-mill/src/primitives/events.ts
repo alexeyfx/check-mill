@@ -1,3 +1,5 @@
+import { call } from "../utils";
+
 /** A function called with a dispatched event of type `E`. */
 export type Listener<E> = (event: E) => void;
 
@@ -64,6 +66,12 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
    */
   private listenersOncer: Listener<E>[] = [];
 
+  private readonly wrapperFn: CallableFunction;
+
+  constructor(isAsync = false) {
+    this.wrapperFn = isAsync ? setTimeout : call;
+  }
+
   /**
    * Adds a persistent listener, which will be invoked on every emission.
    *
@@ -121,15 +129,16 @@ export class TypedEvent<E> implements EventReader<E>, EventWriter<E> {
    *
    * @param event - The event object/data to pass to each listener.
    */
-  public emit = (event: E): void => {
-    for (const listener of this.listeners) {
-      listener(event);
-    }
+  public emit = (event: E): void =>
+    this.wrapperFn(() => {
+      for (const listener of this.listeners) {
+        listener(event);
+      }
 
-    while (this.listenersOncer.length) {
-      this.listenersOncer.pop()?.(event);
-    }
-  };
+      while (this.listenersOncer.length) {
+        this.listenersOncer.pop()?.(event);
+      }
+    });
 
   /**
    * Clears every persistent and one-time listener, preventing them from being called.
