@@ -1,4 +1,4 @@
-export * from "./app-states";
+export * from "./app";
 export * from "./axis";
 export * from "./component";
 export * from "./dom-factories";
@@ -14,3 +14,4 @@ export * from "./slides-renderer";
 export * from "./styles";
 export * from "./translate";
 export * from "./viewport";
+export * from "./processor";

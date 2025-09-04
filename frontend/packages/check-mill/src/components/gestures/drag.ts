@@ -3,7 +3,7 @@ import { prevent } from "../../utils";
 import type { AxisType } from "../axis";
 import type { Component } from "../component";
 import type { Gesture, GestureEvent } from "./gesture";
-import { GestureState, gestureEvent } from "./gesture";
+import { GestureState, GestureType, gestureEvent } from "./gesture";
 
 /**
  * If the user stops dragging for this duration while keeping the pointer down,
@@ -70,7 +70,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
-    const gEvent = gestureEvent(0, GestureState.Initialize);
+    const gEvent = gestureEvent(GestureType.Drag, 0, GestureState.Initialize);
 
     lastEvent = event;
     startEvent = event;

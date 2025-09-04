@@ -1,6 +1,6 @@
 import {
   type GestureEvent,
-  AppStates,
+  AppFlags,
   Axis,
   Drag,
   Wheel,
@@ -20,7 +20,7 @@ import {
   enableSlidePointerEvents,
   writeVariables,
 } from "./components";
-import { type EventReader, type EventWriter, State } from "./primitives";
+import { type EventReader, type EventWriter } from "./primitives";
 import { throttle } from "./utils";
 
 export interface CheckMeMillionTimesType {
@@ -113,7 +113,7 @@ export async function CheckMeMillionTimes(
 
   function render(alpha: number): void {
     const isSettled = Math.abs(motion.velocity) < 0.1;
-    if (isSettled || appState.is(AppStates.GestureRunning)) {
+    if (isSettled || appState.is(AppFlags.GestureRunning)) {
       return;
     }
 
@@ -140,7 +140,7 @@ export async function CheckMeMillionTimes(
     switch (state) {
       case GestureState.Initialize:
         motion.velocity = 0;
-        appState.set(AppStates.GestureRunning);
+        appState.set(AppFlags.GestureRunning);
         disableSlidePointerEvents(root);
         break;
 
@@ -150,7 +150,7 @@ export async function CheckMeMillionTimes(
 
       case GestureState.Finalize:
         motion.velocity = delta;
-        appState.unset(AppStates.GestureRunning);
+        appState.unset(AppFlags.GestureRunning);
         enableSlidePointerEvents(root);
         break;
     }
