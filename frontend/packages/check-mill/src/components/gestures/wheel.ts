@@ -4,7 +4,7 @@ import { prevent, revert } from "../../utils";
 import type { AxisType } from "../axis";
 import type { Component } from "../component";
 import type { GestureEvent, Gesture } from "./gesture";
-import { GestureState, gestureEvent } from "./gesture";
+import { GestureState, GestureType, gestureEvent } from "./gesture";
 
 export interface WheelType extends Component, Gesture {}
 
@@ -33,7 +33,7 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
    */
   function onWheel(event: WheelEvent) {
     const delta = readPoint(event);
-    const gEvent = gestureEvent(revert(delta), GestureState.Update);
+    const gEvent = gestureEvent(GestureType.Wheel, revert(delta), GestureState.Update);
     wheeled.emit(gEvent);
 
     prevent(event, true);
