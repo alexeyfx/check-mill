@@ -1,24 +1,22 @@
 import {
   type AppRef,
-  type ProcessorFunction,
+  type AppProcessorFunction,
+  type SlidesInViewType,
+  type SlidesRendererType,
   Phases,
   ScrollLooper,
   SlidesLooper,
   SlidesRenderer,
   Translate,
+  SlidesInView,
 } from "../components";
 import { noop } from "../utils";
-import { type System } from "./system";
+import { type AppSystem } from "./system";
 
-export const RenderSystem: System<AppRef> = (appRef: AppRef) => {
+export const RenderSystem: AppSystem = (appRef: AppRef) => {
   const scrollLooper = ScrollLooper(appRef.motion, appRef.layout.metrics());
-  const translate = Translate(appRef.axis);
-  const renderer = SlidesRenderer(
-    document,
-    appRef.host.container,
-    appRef.axis,
-    appRef.layout.metrics()
-  );
+
+  const translate = Translate(appRef.axis).to.bind(appRef.owner.container);
 
   const slidesLooper = SlidesLooper(
     appRef.viewport,
@@ -27,36 +25,51 @@ export const RenderSystem: System<AppRef> = (appRef: AppRef) => {
     appRef.slides
   );
 
-  const translateTo = translate.to.bind(appRef.host.container);
+  const slidesInView = SlidesInView(appRef.owner.root, appRef.slides);
+
+  const renderer = SlidesRenderer(
+    appRef.owner.document,
+    appRef.owner.container,
+    appRef.axis,
+    appRef.layout.metrics()
+  );
 
   return {
     init: () => noop,
     logic: {
-      [Phases.Render]: [],
+      [Phases.Render]: [lerp],
     },
   };
 };
 
-const lerp: ProcessorFunction<AppRef> = (appRef) => {
+const lerp: AppProcessorFunction = (appRef, timeParams) => {
   const motion = appRef.motion;
-  const interpolated = motion.current * 0 + motion.previous * (1.0 - 0);
+  const interpolated =
+    motion.current * timeParams.alpha + motion.previous * (1.0 - timeParams.alpha);
   motion.offset = interpolated;
 
   return appRef;
 };
 
-const syncSlideVisibility = (slidesInView: SlidesInViewType, appRef: AppRef): AppRef => {
-  const records = slidesInView.takeRecords();
+const createSlideVisibilitySync = (
+  slidesInView: SlidesInViewType,
+  renderer: SlidesRendererType
+): AppProcessorFunction => {
+  return (appRef, _timeParams) => {
+    const records = slidesInView.takeRecords();
 
-  for (const record of records) {
-    switch (record) {
-      case -1:
-        renderer.fadeOut(slides[record], motion);
-        break;
+    for (const record of records) {
+      switch (record) {
+        case -1:
+          renderer.fadeOut(appRef.slides[record], appRef.motion);
+          break;
 
-      case 1:
-        renderer.fadeIn(slides[record], motion);
-        break;
+        case 1:
+          renderer.fadeIn(appRef.slides[record], appRef.motion);
+          break;
+      }
     }
-  }
+
+    return appRef;
+  };
 };

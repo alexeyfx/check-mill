@@ -4,7 +4,8 @@ import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
 import { type GestureEvent } from "./gestures";
 import { Layout } from "./layout";
-import { ProcessorFunction } from "./processor";
+import { type ProcessorFunction } from "./processor";
+import { type TimeParams } from "./render-loop";
 import { type ScrollMotionType, ScrollMotion } from "./scroll-motion";
 import { type SlidesCollectionType, Slides } from "./slides";
 import { type ViewportType, Viewport } from "./viewport";
@@ -40,19 +41,7 @@ export interface AppRef {
   wheelEvents: GestureEvent[];
 }
 
-/**
- * Parameters passed by the render loop on each frame.
- */
-export type TimeParams = {
-  /** The current time of the frame (e.g., performance.now()). */
-  t: number;
-  /** The time delta since the last frame. */
-  dt: number;
-  /** The interpolation factor for rendering between physics steps. */
-  alpha: number;
-};
-
-export type AppProcessorFunction = ProcessorFunction<AppRef>;
+export type AppProcessorFunction = ProcessorFunction<AppRef, TimeParams>;
 
 export function App(root: HTMLElement, container: HTMLElement): AppRef {
   const document = root.ownerDocument;
