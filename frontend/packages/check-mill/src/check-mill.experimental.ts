@@ -1,24 +1,32 @@
-import { type AppRef, App, RenderLoop, AppDirtyFlags, Phases, Processor } from "./components";
-import { type EventReader, type EventWriter } from "./primitives";
-import { GesturesSystem, RenderSystem, UpdateSystem } from "./systems";
+import {
+  type AppRef,
+  type PhasePredicate,
+  AppDirtyFlags,
+  Phases,
+  App,
+  RenderLoop,
+  Processor,
+  AppProcessorFunction,
+} from "./components";
+import { GesturesSystem, UpdateSystem } from "./systems";
 
-export interface CheckMeMillionTimesType {
-  events: Record<string, EventReader<unknown>>;
-  commands: Record<string, EventWriter<unknown>>;
-}
+export type CheckMillType = void;
 
-export function CheckMill(root: HTMLElement, container: HTMLElement): void {
+export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<CheckMillType> {
   const appRef = App(root, container);
 
-  const ioPhase = Processor.phase<AppRef>(Phases.IO).runIf(({ is }) =>
-    is(AppDirtyFlags.Interacted)
-  );
-
+  const ioPhase = Processor.phase<AppRef>(Phases.IO).runIf(isInteracted);
   const updatePhase = Processor.phase<AppRef>(Phases.Update);
   const renderPhase = Processor.phase<AppRef>(Phases.Render);
   const cleanUpPhase = Processor.phase<AppRef>(Phases.Cleanup);
 
-  const systems = [GesturesSystem(appRef), UpdateSystem(appRef), RenderSystem(appRef)];
+  cleanUpPhase.add(resetInteractionState);
+
+  // prettier-ignore
+  const systems = [
+    UpdateSystem(appRef),
+    GesturesSystem(appRef),
+  ];
 
   for (const system of systems) {
     ioPhase.pipe(system.logic[Phases.IO] ?? []);
@@ -27,12 +35,37 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): void {
     cleanUpPhase.pipe(system.logic[Phases.Cleanup] ?? []);
   }
 
-  const updateExecutor = Processor.merge([ioPhase.runner(), updatePhase.runner()])
+  const destroyers = systems.map((system) => system.init());
+
+  // prettier-ignore
+  const updateExecutor = Processor
+    .merge([ioPhase, updatePhase].map(p => p.runner()))
     .executor()
-    .bind({}, appRef);
+    .bind(null, appRef);
 
-  const renderExecutor = Processor.merge([renderPhase.runner()]).executor().bind({}, appRef);
+  // prettier-ignore
+  const renderExecutor = Processor
+    .merge([renderPhase, cleanUpPhase].map(p => p.runner()))
+    .executor()
+    .bind(null, appRef);
 
-  const renderLoop = RenderLoop(document, window, updateExecutor, renderExecutor, 60 /* fps */);
+  const renderLoop = RenderLoop(
+    appRef.owner.document,
+    appRef.owner.window,
+    updateExecutor,
+    renderExecutor,
+    60 /* fps */
+  );
   renderLoop.start();
+
+  return Promise.resolve();
 }
+
+const isInteracted: PhasePredicate<AppRef> = (appRef: AppRef): boolean => {
+  return appRef.dirtyFlags.is(AppDirtyFlags.Interacted);
+};
+
+const resetInteractionState: AppProcessorFunction = (appRef: AppRef): AppRef => {
+  appRef.dirtyFlags.unset(AppDirtyFlags.Interacted);
+  return appRef;
+};

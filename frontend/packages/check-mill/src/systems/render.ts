@@ -1,16 +1,14 @@
-import { type System } from "./system";
-
 import {
-  AppRef,
+  type AppRef,
+  type ProcessorFunction,
   Phases,
   ScrollLooper,
   SlidesLooper,
   SlidesRenderer,
   Translate,
-  runIf,
-  type ProcessorFunction,
 } from "../components";
 import { noop } from "../utils";
+import { type System } from "./system";
 
 export const RenderSystem: System<AppRef> = (appRef: AppRef) => {
   const scrollLooper = ScrollLooper(appRef.motion, appRef.layout.metrics());
@@ -34,12 +32,7 @@ export const RenderSystem: System<AppRef> = (appRef: AppRef) => {
   return {
     init: () => noop,
     logic: {
-      [Phases.Render]: [
-        lerp,
-        scrollLooper.loop,
-        translateTo,
-        runIf(slidesLooper.loop, renderer.syncOffset.bind({}, appRef.slides)),
-      ],
+      [Phases.Render]: [],
     },
   };
 };

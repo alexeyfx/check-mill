@@ -2,7 +2,7 @@ import { type AppRef, Phases, ProcessorFunction } from "../components";
 import { noop } from "../utils";
 import { type System } from "./system";
 
-export const UpdateSystem: System<AppRef> = (_appRef: AppRef) => {
+export const UpdateSystem: System<AppRef> = () => {
   return {
     init: () => noop,
     logic: {
@@ -11,7 +11,7 @@ export const UpdateSystem: System<AppRef> = (_appRef: AppRef) => {
   };
 };
 
-const processUpdate: ProcessorFunction<AppRef> = (appRef: AppRef) => {
+const processUpdate: ProcessorFunction<AppRef> = (appRef) => {
   const motion = appRef.motion;
 
   const integrated = applyFriction(motion.velocity, 0.75, 0);

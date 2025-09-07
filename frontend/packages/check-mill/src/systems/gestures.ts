@@ -1,27 +1,28 @@
 import {
   type AppRef,
-  Drag,
-  GestureState,
-  Wheel,
-  Phases,
+  type GestureEvent,
+  type ProcessorFunction,
   AppDirtyFlags,
-  ProcessorFunction,
+  GestureState,
+  Phases,
+  Drag,
+  Wheel,
   disableSlidePointerEvents,
   enableSlidePointerEvents,
 } from "../components";
-import { Disposable } from "../primitives";
+import { type Disposable } from "../primitives";
 import { call, flush } from "../utils";
 import { type System } from "./system";
 
 export const GesturesSystem: System<AppRef> = (appRef: AppRef) => {
-  const drag = Drag(appRef.host.root, appRef.axis);
-  const wheel = Wheel(appRef.host.root, appRef.axis);
+  const drag = Drag(appRef.owner.root, appRef.axis);
+  const wheel = Wheel(appRef.owner.root, appRef.axis);
 
   const cleanup = () => flush([drag.destroy, wheel.destroy], call);
 
   const init = (): Disposable => {
-    drag.init();
-    wheel.init();
+    drag.init().then(() => drag.register(handleDragScroll.bind(null, appRef)));
+    wheel.init().then(() => wheel.register(handleWheelScroll.bind(null, appRef)));
 
     return cleanup;
   };
@@ -34,7 +35,12 @@ export const GesturesSystem: System<AppRef> = (appRef: AppRef) => {
   };
 };
 
-const processWheelScroll: ProcessorFunction<AppRef> = (appRef: AppRef): AppRef => {
+const handleWheelScroll = (appRef: AppRef, event: GestureEvent): void => {
+  appRef.wheelEvents.push(event);
+  appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
+};
+
+const processWheelScroll: ProcessorFunction<AppRef> = (appRef) => {
   const events = appRef.wheelEvents;
   const motion = appRef.motion;
 
@@ -48,7 +54,21 @@ const processWheelScroll: ProcessorFunction<AppRef> = (appRef: AppRef): AppRef =
   return appRef;
 };
 
-const processDragScroll: ProcessorFunction<AppRef> = (appRef: AppRef): AppRef => {
+const handleDragScroll = (appRef: AppRef, event: GestureEvent): void => {
+  switch (event.state) {
+    case GestureState.Initialize:
+      disableSlidePointerEvents(appRef.owner.root);
+      break;
+    case GestureState.Finalize:
+      enableSlidePointerEvents(appRef.owner.root);
+      break;
+  }
+
+  appRef.dragEvents.push(event);
+  appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
+};
+
+const processDragScroll: ProcessorFunction<AppRef> = (appRef) => {
   const events = appRef.dragEvents;
   const motion = appRef.motion;
 
@@ -56,8 +76,6 @@ const processDragScroll: ProcessorFunction<AppRef> = (appRef: AppRef): AppRef =>
     switch (event.state) {
       case GestureState.Initialize:
         motion.velocity = 0;
-        appRef.dirtyFlags &= AppDirtyFlags.GestureRunning;
-        disableSlidePointerEvents(appRef.host.root);
         break;
 
       case GestureState.Update:
@@ -66,8 +84,6 @@ const processDragScroll: ProcessorFunction<AppRef> = (appRef: AppRef): AppRef =>
 
       case GestureState.Finalize:
         motion.velocity = event.delta;
-        appRef.dirtyFlags |= AppDirtyFlags.GestureRunning;
-        enableSlidePointerEvents(appRef.host.root);
         break;
     }
   }
