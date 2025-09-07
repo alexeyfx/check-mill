@@ -1,9 +1,5 @@
-import { noop } from "../utils";
-
-/**
- * A function that performs a cleanup action.
- */
-export type Disposable = () => void;
+import { type Disposable } from "./types";
+import { noop } from "./utils";
 
 /**
  * A unique identifier for a disposable store category.

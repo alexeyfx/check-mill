@@ -1,5 +1,5 @@
-import { call, flush } from "../utils";
-import { Disposable } from "./events";
+import { type Disposable } from "./types";
+import { call, flush } from "./utils";
 
 export interface DisposableStoreType {
   pushStatic(...funcs: Disposable[]): void;

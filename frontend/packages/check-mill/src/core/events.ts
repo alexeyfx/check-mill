@@ -1,10 +1,9 @@
-import { call } from "../utils";
+import { call } from "./utils";
+
+import { type Disposable } from "./types";
 
 /** A function called with a dispatched event of type `E`. */
 export type Listener<E> = (event: E) => void;
-
-/** A function that, when invoked, disposes from a resource. */
-export type Disposable = VoidFunction;
 
 /**
  * Provides read-only access to an event stream.

@@ -11,14 +11,14 @@ export const enum GestureType {
 
 export interface GestureEvent {
   type: GestureType;
-  delta: number;
   state: GestureState;
+  delta: number;
 }
 
 export interface Gesture {
   register(handler: (event: GestureEvent) => void): void;
 }
 
-export function gestureEvent(type: GestureType, delta: number, state: GestureState): GestureEvent {
+export function gestureEvent(type: GestureType, state: GestureState, delta: number): GestureEvent {
   return { type, delta, state };
 }

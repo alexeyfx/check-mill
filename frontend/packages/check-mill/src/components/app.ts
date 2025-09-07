@@ -1,5 +1,5 @@
-import { type BitwiseFlags, createFlagManager } from "../primitives";
-import { assert } from "../utils";
+import { type BitwiseFlags, createFlagManager } from "../core";
+import { assert } from "../core";
 import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
 import { type GestureEvent } from "./gestures";

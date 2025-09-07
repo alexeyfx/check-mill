@@ -10,7 +10,7 @@ import {
   Translate,
   SlidesInView,
 } from "../components";
-import { noop } from "../utils";
+import { noop } from "../core";
 import { type AppSystem } from "./system";
 
 export const RenderSystem: AppSystem = (appRef: AppRef) => {
@@ -73,3 +73,21 @@ const createSlideVisibilitySync = (
     return appRef;
   };
 };
+
+// Reference of previous implementations of render method
+// function render(alpha: number): void {
+//   const isSettled = Math.abs(motion.velocity) < 0.1;
+//   if (isSettled || appState.is(AppFlags.GestureRunning)) {
+//     return;
+//   }
+
+//   const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
+//   motion.offset = interpolated;
+
+//   scrollLooper.loop();
+//   slidesLooper.loop() && renderer.syncOffset(slides);
+
+//   syncSlidesVisibilityThrottled();
+
+//   translate.to(container, motion.offset);
+// }

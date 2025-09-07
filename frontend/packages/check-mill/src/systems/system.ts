@@ -1,6 +1,5 @@
-import { type TimeParams, type AppRef, Phases } from "../components";
-import { type ProcessorFunction } from "../components/processor";
-import { Disposable } from "../primitives";
+import { type AppRef, type ProcessorFunction, type TimeParams, Phases } from "../components";
+import { Disposable } from "../core";
 
 /**
  * Defines the structure of a system's per-frame logic.

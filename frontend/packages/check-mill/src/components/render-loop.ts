@@ -1,5 +1,4 @@
-import { DisposableStore, event } from "../primitives";
-import { assert } from "../utils";
+import { DisposableStore, assert, event } from "../core";
 import { type Component } from "./component";
 
 /**
