@@ -1,5 +1,5 @@
 import { DisposableStore, event } from "../primitives";
-import { type WindowType, assert } from "../utils";
+import { assert } from "../utils";
 import { type Component } from "./component";
 
 /**
@@ -15,7 +15,7 @@ export interface RenderLoopType extends Component {
  * The render loop runs updates at a fixed timestep and performs rendering with a variable alpha based on the timestep.
  *
  * @param {Document} ownerDocument - The document object associated with the window.
- * @param {WindowType} ownerWindow - The window object associated with the document.
+ * @param {Window} ownerWindow - The window object associated with the document.
  * @param {(t: number, dt: number) => void} update - A function that performs the app update logic.
  * @param {(alpha: number) => void} render - A function that renders the app state.
  * @param {number} [fps=60] - The desired frames per second for the render loop (defaults to 60).
@@ -26,7 +26,7 @@ export interface RenderLoopType extends Component {
  */
 export function RenderLoop(
   ownerDocument: Document,
-  ownerWindow: WindowType,
+  ownerWindow: Window,
   update: (t: number, dt: number) => void,
   render: (alpha: number) => void,
   fps: number = 60

@@ -1,10 +1,13 @@
-import { Axis, type AxisType } from "./axis";
+import { type BitwiseFlags, createFlagManager } from "../primitives";
+import { assert } from "../utils";
+import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
-import { GestureEvent, GestureType } from "./gestures";
-import { Layout, type LayoutMetrics } from "./layout";
-import { ScrollMotion, type ScrollMotionType } from "./scroll-motion";
-import { Slides, type SlidesCollectionType } from "./slides";
-import { Viewport, type ViewportType } from "./viewport";
+import { type GestureEvent } from "./gestures";
+import { Layout } from "./layout";
+import { ProcessorFunction } from "./processor";
+import { type ScrollMotionType, ScrollMotion } from "./scroll-motion";
+import { type SlidesCollectionType, Slides } from "./slides";
+import { type ViewportType, Viewport } from "./viewport";
 
 // prettier-ignore
 export const enum AppDirtyFlags {
@@ -20,10 +23,16 @@ export const enum Phases {
   Cleanup,
 }
 
-export interface AppState {
+export interface AppRef {
+  owner: {
+    window: Window;
+    document: Document;
+    root: HTMLElement;
+    container: HTMLElement;
+  };
   axis: AxisType;
-  dirtyFlags: number;
-  layout: LayoutMetrics;
+  dirtyFlags: BitwiseFlags;
+  layout: Layout;
   motion: ScrollMotionType;
   slides: SlidesCollectionType;
   viewport: ViewportType;
@@ -31,11 +40,27 @@ export interface AppState {
   wheelEvents: GestureEvent[];
 }
 
-export type AppRef = ReturnType<typeof App>;
+/**
+ * Parameters passed by the render loop on each frame.
+ */
+export type TimeParams = {
+  /** The current time of the frame (e.g., performance.now()). */
+  t: number;
+  /** The time delta since the last frame. */
+  dt: number;
+  /** The interpolation factor for rendering between physics steps. */
+  alpha: number;
+};
 
-export function App(root: HTMLElement, container: HTMLElement) {
+export type AppProcessorFunction = ProcessorFunction<AppRef>;
+
+export function App(root: HTMLElement, container: HTMLElement): AppRef {
+  const document = root.ownerDocument;
+  const window = document.defaultView;
+  assert(window, "Window object not available for provided root element");
+
   /** App's state component */
-  let dirtyFlags = AppDirtyFlags.None;
+  const dirtyFlags = createFlagManager(AppDirtyFlags.None);
 
   /** Scroll direction component */
   const axis = Axis("y");
@@ -65,18 +90,19 @@ export function App(root: HTMLElement, container: HTMLElement) {
   const slides = Slides(new SlideFactory(document), layout.metrics());
 
   return {
-    host: {
+    owner: {
+      window,
+      document,
       root,
       container,
-    } as const,
+    },
     dirtyFlags,
     axis,
     motion,
     layout,
     slides,
     viewport,
-    dragEvents: new Array<GestureEvent & { type: GestureType.Drag }>(),
-    wheelEvents: new Array<GestureEvent & { type: GestureType.Wheel }>(),
-    is: (flag: number) => (dirtyFlags & flag) === flag;
+    dragEvents: new Array<GestureEvent>(),
+    wheelEvents: new Array<GestureEvent>(),
   };
 }

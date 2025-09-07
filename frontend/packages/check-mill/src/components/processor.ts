@@ -8,20 +8,20 @@ export type ProcessorFunction<T> = (data: T) => T;
  * A unique identifier for a phase, used for ordering.
  * Enums with numeric values are ideal for this.
  */
-type PhaseIdentifier = number;
+export type PhaseIdentifier = number;
 
 /**
  * A function that receives the game state and returns true if a phase should run.
  * @template T The type of the shared data object.
  */
-type PhasePredicate<T> = (data: T) => boolean;
+export type PhasePredicate<T> = (data: T) => boolean;
 
 /**
  * A PhaseRunner represents a single, configured phase with its functions.
  * It's an immutable object created by a PhaseBuilder.
  * @template T The type of the shared data object.
  */
-class PhaseRunner<T> {
+export class PhaseRunner<T> {
   public readonly phase: PhaseIdentifier;
 
   private readonly predicate: PhasePredicate<T>;
@@ -58,7 +58,7 @@ class PhaseRunner<T> {
  * A MergedRunner represents a collection of PhaseRunners, ordered for execution.
  * @template T The type of the shared data object.
  */
-class MergedRunner<T> {
+export class MergedRunner<T> {
   private readonly runners: ReadonlyArray<PhaseRunner<T>>;
 
   constructor(runners: PhaseRunner<T>[]) {
@@ -96,7 +96,7 @@ export class PhaseBuilder<T> {
    * returns false, none of the functions in this phase will be executed.
    * @param predicate A function that returns true if the phase should run.
    */
-  public runIf(predicate: (data: T) => boolean): this {
+  public runIf(predicate: PhasePredicate<T>): this {
     this.predicate = predicate;
     return this;
   }
