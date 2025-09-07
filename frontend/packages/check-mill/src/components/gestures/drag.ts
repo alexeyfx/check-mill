@@ -1,9 +1,13 @@
-import { DisposableStore, TypedEvent, event } from "../../primitives";
-import { prevent } from "../../utils";
-import type { AxisType } from "../axis";
-import type { Component } from "../component";
-import type { Gesture, GestureEvent } from "./gesture";
-import { GestureState, GestureType, gestureEvent } from "./gesture";
+import { DisposableStore, TypedEvent, event, prevent } from "../../core";
+import { type AxisType } from "../axis";
+import { type Component } from "../component";
+import {
+  type Gesture,
+  type GestureEvent,
+  GestureState,
+  GestureType,
+  gestureEvent,
+} from "./gesture";
 
 /**
  * If the user stops dragging for this duration while keeping the pointer down,
@@ -70,7 +74,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
-    const gEvent = gestureEvent(GestureType.Drag, 0, GestureState.Initialize);
+    const gEvent = gestureEvent(GestureType.Drag, GestureState.Initialize, 0);
 
     lastEvent = event;
     startEvent = event;
@@ -86,7 +90,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   function onPointerMove(event: PointerEvent): void {
     const diff = diffCoord(event);
     const expired = diffTime(event) > LOG_INTERVAL;
-    const gEvent = gestureEvent(axis.direction(diff), GestureState.Update);
+    const gEvent = gestureEvent(GestureType.Drag, GestureState.Update, axis.direction(diff));
 
     lastEvent = event;
     if (expired) {
@@ -102,7 +106,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    */
   function onPointerUp(event: PointerEvent): void {
     const acceleration = computeAcceleration(event);
-    const gEvent = gestureEvent(10 * acceleration, GestureState.Finalize);
+    const gEvent = gestureEvent(GestureType.Drag, GestureState.Finalize, 10 * acceleration);
 
     dragged.emit(gEvent);
     disposable.flushTemporal();

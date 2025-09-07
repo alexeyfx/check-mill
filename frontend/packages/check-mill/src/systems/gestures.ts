@@ -10,8 +10,7 @@ import {
   disableSlidePointerEvents,
   enableSlidePointerEvents,
 } from "../components";
-import { type Disposable } from "../primitives";
-import { call, flush } from "../utils";
+import { type Disposable, call, flush } from "../core";
 import { type AppSystem } from "./system";
 
 export const GesturesSystem: AppSystem = (appRef: AppRef) => {

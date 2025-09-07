@@ -1,4 +1,4 @@
-import { between } from "../utils";
+import { between } from "../core";
 import { LayoutMetrics } from "./layout";
 import { type ScrollMotionType } from "./scroll-motion";
 import { type SlidesCollectionType } from "./slides";

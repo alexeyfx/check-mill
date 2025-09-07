@@ -1,4 +1,4 @@
-import { DisposableStore } from "../primitives";
+import { DisposableStore } from "../core";
 import { type Component } from "./component";
 import { type SlidesCollectionType } from "./slides";
 

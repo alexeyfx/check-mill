@@ -1,5 +1,5 @@
-import { clamp } from "../../utils";
-import type { LayoutConfig, LayoutMetrics } from "./types";
+import { clamp } from "../../core";
+import { type LayoutConfig, type LayoutMetrics } from "./types";
 
 export interface LayoutType {
   metrics(): Readonly<LayoutMetrics>;
@@ -67,7 +67,7 @@ export class Layout implements LayoutType {
       containerPadding,
       contentWidth,
       contentHeight,
-      totalCells
+      totalCells,
     };
 
     return this.cachedMetrics;

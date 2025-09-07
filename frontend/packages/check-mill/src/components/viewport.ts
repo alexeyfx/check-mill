@@ -1,4 +1,4 @@
-import { type EventReader, DisposableStore, TypedEvent } from "../primitives";
+import { type EventReader, DisposableStore, TypedEvent } from "../core";
 import { type Component } from "./component";
 
 export interface ViewportType extends Component {

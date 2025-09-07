@@ -1,10 +1,7 @@
-import { DisposableStore, TypedEvent, event } from "../../primitives";
-import { prevent, revert } from "../../utils";
-
-import type { AxisType } from "../axis";
-import type { Component } from "../component";
-import type { GestureEvent, Gesture } from "./gesture";
-import { GestureState, GestureType, gestureEvent } from "./gesture";
+import { DisposableStore, TypedEvent, event, prevent, revert } from "../../core";
+import { type AxisType } from "../axis";
+import { type Component } from "../component";
+import { type GestureEvent, Gesture, GestureState, GestureType, gestureEvent } from "./gesture";
 
 export interface WheelType extends Component, Gesture {}
 

@@ -1,4 +1,6 @@
-export * as Datatypes from "./datatypes";
+export * from "./datatypes";
+export * from "./disposable";
 export * from "./events";
 export * from "./processor";
-export * as Utils from "./utils";
+export * from "./types";
+export * from "./utils";
