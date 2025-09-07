@@ -3,7 +3,7 @@
  *
  * @param func - A zero-argument function to invoke.
  */
-export function call(func: VoidFunction): void {
+export function call(func: () => void): void {
   func();
 }
 
