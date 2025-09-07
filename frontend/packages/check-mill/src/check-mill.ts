@@ -9,7 +9,7 @@ import {
   Processor,
   RenderLoop,
 } from "./components";
-import { GesturesSystem, UpdateSystem } from "./systems";
+import { GesturesSystem, RenderSystem, UpdateSystem } from "./systems";
 
 export type CheckMillType = void;
 
@@ -27,6 +27,7 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
   const systems = [
     UpdateSystem(appRef),
     GesturesSystem(appRef),
+    RenderSystem(appRef),
   ];
 
   for (const system of systems) {

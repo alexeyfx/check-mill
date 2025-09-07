@@ -1,5 +1,5 @@
 import { type AppProcessorFunction, Phases } from "../components";
-import { noop } from "../utils";
+import { noop } from "../core";
 import { type AppSystem } from "./system";
 
 export const UpdateSystem: AppSystem = () => {
