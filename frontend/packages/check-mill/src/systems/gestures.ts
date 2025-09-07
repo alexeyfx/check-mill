@@ -1,7 +1,7 @@
 import {
+  type AppProcessorFunction,
   type AppRef,
   type GestureEvent,
-  type ProcessorFunction,
   AppDirtyFlags,
   GestureState,
   Phases,
@@ -12,17 +12,22 @@ import {
 } from "../components";
 import { type Disposable } from "../primitives";
 import { call, flush } from "../utils";
-import { type System } from "./system";
+import { type AppSystem } from "./system";
 
-export const GesturesSystem: System<AppRef> = (appRef: AppRef) => {
+export const GesturesSystem: AppSystem = (appRef: AppRef) => {
   const drag = Drag(appRef.owner.root, appRef.axis);
   const wheel = Wheel(appRef.owner.root, appRef.axis);
 
   const cleanup = () => flush([drag.destroy, wheel.destroy], call);
 
   const init = (): Disposable => {
-    drag.init().then(() => drag.register(handleDragScroll.bind(null, appRef)));
-    wheel.init().then(() => wheel.register(handleWheelScroll.bind(null, appRef)));
+    // prettier-ignore
+    Promise
+      .allSettled([drag, wheel].map(g => g.init()))
+      .then(() => {
+        drag.register(handleDragScroll.bind(null, appRef));
+        wheel.register(handleWheelScroll.bind(null, appRef));
+      });
 
     return cleanup;
   };
@@ -40,7 +45,7 @@ const handleWheelScroll = (appRef: AppRef, event: GestureEvent): void => {
   appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
 };
 
-const processWheelScroll: ProcessorFunction<AppRef> = (appRef) => {
+const processWheelScroll: AppProcessorFunction = (appRef, _timeParams) => {
   const events = appRef.wheelEvents;
   const motion = appRef.motion;
 
@@ -68,7 +73,7 @@ const handleDragScroll = (appRef: AppRef, event: GestureEvent): void => {
   appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
 };
 
-const processDragScroll: ProcessorFunction<AppRef> = (appRef) => {
+const processDragScroll: AppProcessorFunction = (appRef, _timeParams) => {
   const events = appRef.dragEvents;
   const motion = appRef.motion;
 

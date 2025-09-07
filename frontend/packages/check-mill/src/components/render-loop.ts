@@ -3,6 +3,18 @@ import { assert } from "../utils";
 import { type Component } from "./component";
 
 /**
+ * Parameters passed by the render loop on each frame.
+ */
+export type TimeParams = {
+  /** The current time of the frame (e.g., performance.now()). */
+  t: number;
+  /** The time delta since the last frame. */
+  dt: number;
+  /** The interpolation factor for rendering between physics steps. */
+  alpha: number;
+};
+
+/**
  * Represents the interface for a Render Loop that can be started and stopped.
  */
 export interface RenderLoopType extends Component {
@@ -16,8 +28,8 @@ export interface RenderLoopType extends Component {
  *
  * @param {Document} ownerDocument - The document object associated with the window.
  * @param {Window} ownerWindow - The window object associated with the document.
- * @param {(t: number, dt: number) => void} update - A function that performs the app update logic.
- * @param {(alpha: number) => void} render - A function that renders the app state.
+ * @param {(timeParams: TimeParams) => void} update - A function that performs the app update logic.
+ * @param {(timeParams: TimeParams) => void} render - A function that renders the app state.
  * @param {number} [fps=60] - The desired frames per second for the render loop (defaults to 60).
  * @returns {RenderLoopType} A RenderLoop instance with start and stop methods to control the loop.
  *
@@ -27,8 +39,8 @@ export interface RenderLoopType extends Component {
 export function RenderLoop(
   ownerDocument: Document,
   ownerWindow: Window,
-  update: (t: number, dt: number) => void,
-  render: (alpha: number) => void,
+  update: (timeParams: TimeParams) => void,
+  render: (timeParams: TimeParams) => void,
   fps: number = 60
 ): RenderLoopType {
   assert(fps > 0, `Invalid FPS value: ${fps}.`);
@@ -116,7 +128,11 @@ export function RenderLoop(
   function tick(timeStamp: DOMHighResTimeStamp): void {
     if (!lastTimeStamp) {
       lastTimeStamp = timeStamp;
-      update(simulationTime, fixedTimeStep);
+      update({
+        t: simulationTime,
+        dt: fixedTimeStep,
+        alpha: 0,
+      });
     }
 
     const timeElapsed = timeStamp - lastTimeStamp;
@@ -125,7 +141,11 @@ export function RenderLoop(
 
     let updatesCount = 0;
     while (accumulator >= fixedTimeStep && updatesCount < maxUpdatesPerFrame) {
-      update(simulationTime, fixedTimeStep);
+      update({
+        t: simulationTime,
+        dt: fixedTimeStep,
+        alpha: accumulator / fixedTimeStep,
+      });
 
       updatesCount += 1;
       simulationTime += fixedTimeStep;
@@ -133,7 +153,11 @@ export function RenderLoop(
     }
 
     const alpha = accumulator / fixedTimeStep;
-    render(alpha);
+    render({
+      t: simulationTime,
+      dt: fixedTimeStep,
+      alpha,
+    });
 
     animationId = ownerWindow.requestAnimationFrame(tick);
   }

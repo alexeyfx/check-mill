@@ -1,12 +1,13 @@
 import {
+  type AppProcessorFunction,
   type AppRef,
   type PhasePredicate,
+  type TimeParams,
   AppDirtyFlags,
   Phases,
   App,
-  RenderLoop,
   Processor,
-  AppProcessorFunction,
+  RenderLoop,
 } from "./components";
 import { GesturesSystem, UpdateSystem } from "./systems";
 
@@ -15,10 +16,10 @@ export type CheckMillType = void;
 export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<CheckMillType> {
   const appRef = App(root, container);
 
-  const ioPhase = Processor.phase<AppRef>(Phases.IO).runIf(isInteracted);
-  const updatePhase = Processor.phase<AppRef>(Phases.Update);
-  const renderPhase = Processor.phase<AppRef>(Phases.Render);
-  const cleanUpPhase = Processor.phase<AppRef>(Phases.Cleanup);
+  const ioPhase = Processor.phase<AppRef, TimeParams>(Phases.IO).runIf(isInteracted);
+  const updatePhase = Processor.phase<AppRef, TimeParams>(Phases.Update);
+  const renderPhase = Processor.phase<AppRef, TimeParams>(Phases.Render);
+  const cleanUpPhase = Processor.phase<AppRef, TimeParams>(Phases.Cleanup);
 
   cleanUpPhase.add(resetInteractionState);
 
@@ -56,8 +57,8 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
     renderExecutor,
     60 /* fps */
   );
-  renderLoop.start();
 
+  renderLoop.init().then(() => renderLoop.start());
   return Promise.resolve();
 }
 
