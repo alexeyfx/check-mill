@@ -1,4 +1,4 @@
-import { px } from "../utils";
+import { px } from "../core";
 import { type LayoutMetrics } from "./layout";
 
 const enum CSSVariables {

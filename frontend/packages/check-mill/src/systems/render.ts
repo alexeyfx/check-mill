@@ -14,10 +14,15 @@ import { noop } from "../core";
 import { type AppSystem } from "./system";
 
 export const RenderSystem: AppSystem = (appRef: AppRef) => {
-  const scrollLooper = ScrollLooper(appRef.motion, appRef.layout.metrics());
-
   const translate = Translate(appRef.axis).to.bind(appRef.owner.container);
 
+  // prettier-ignore
+  const scrollLooper = ScrollLooper(
+    appRef.motion,
+    appRef.layout.metrics()
+  );
+
+  // prettier-ignore
   const slidesLooper = SlidesLooper(
     appRef.viewport,
     appRef.layout.metrics(),
@@ -25,8 +30,13 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     appRef.slides
   );
 
-  const slidesInView = SlidesInView(appRef.owner.root, appRef.slides);
+  // prettier-ignore
+  const slidesInView = SlidesInView(
+    appRef.owner.root,
+    appRef.slides
+  );
 
+  // prettier-ignore
   const renderer = SlidesRenderer(
     appRef.owner.document,
     appRef.owner.container,
