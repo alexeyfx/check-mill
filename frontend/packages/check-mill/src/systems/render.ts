@@ -1,7 +1,9 @@
 import {
   type AppRef,
   type AppProcessorFunction,
+  type ScrollLooperType,
   type SlidesInViewType,
+  type SlidesLooperType,
   type SlidesRendererType,
   Phases,
   ScrollLooper,
@@ -14,8 +16,6 @@ import { noop } from "../core";
 import { type AppSystem } from "./system";
 
 export const RenderSystem: AppSystem = (appRef: AppRef) => {
-  const translate = Translate(appRef.axis).to.bind(appRef.owner.container);
-
   // prettier-ignore
   const scrollLooper = ScrollLooper(
     appRef.motion,
@@ -44,10 +44,20 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     appRef.layout.metrics()
   );
 
+  const translate = Translate(appRef.axis).to.bind(null, appRef.owner.container);
+
   return {
     init: () => noop,
     logic: {
-      [Phases.Render]: [lerp],
+      [Phases.Render]: [
+        lerp,
+        loop.bind(null, slidesLooper, scrollLooper, renderer),
+        syncVisibility.bind(null, slidesInView, renderer),
+        (appRef: AppRef) => {
+          translate(appRef.motion.offset);
+          return appRef;
+        },
+      ],
     },
   };
 };
@@ -61,43 +71,36 @@ const lerp: AppProcessorFunction = (appRef, timeParams) => {
   return appRef;
 };
 
-const createSlideVisibilitySync = (
+const syncVisibility = (
   slidesInView: SlidesInViewType,
-  renderer: SlidesRendererType
-): AppProcessorFunction => {
-  return (appRef, _timeParams) => {
-    const records = slidesInView.takeRecords();
+  renderer: SlidesRendererType,
+  appRef: AppRef
+) => {
+  const records = slidesInView.takeRecords();
 
-    for (const record of records) {
-      switch (record) {
-        case -1:
-          renderer.fadeOut(appRef.slides[record], appRef.motion);
-          break;
+  for (const record of records) {
+    switch (record) {
+      case -1:
+        renderer.fadeOut(appRef.slides[record], appRef.motion);
+        break;
 
-        case 1:
-          renderer.fadeIn(appRef.slides[record], appRef.motion);
-          break;
-      }
+      case 1:
+        renderer.fadeIn(appRef.slides[record], appRef.motion);
+        break;
     }
+  }
 
-    return appRef;
-  };
+  return appRef;
 };
 
-// Reference of previous implementations of render method
-// function render(alpha: number): void {
-//   const isSettled = Math.abs(motion.velocity) < 0.1;
-//   if (isSettled || appState.is(AppFlags.GestureRunning)) {
-//     return;
-//   }
+const loop = (
+  slidesLooper: SlidesLooperType,
+  scrollLooper: ScrollLooperType,
+  renderer: SlidesRendererType,
+  appRef: AppRef
+): AppRef => {
+  scrollLooper.loop();
+  slidesLooper.loop() && renderer.syncOffset(appRef.slides);
 
-//   const interpolated = motion.current * alpha + motion.previous * (1.0 - alpha);
-//   motion.offset = interpolated;
-
-//   scrollLooper.loop();
-//   slidesLooper.loop() && renderer.syncOffset(slides);
-
-//   syncSlidesVisibilityThrottled();
-
-//   translate.to(container, motion.offset);
-// }
+  return appRef;
+};
