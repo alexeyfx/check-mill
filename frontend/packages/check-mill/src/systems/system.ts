@@ -1,4 +1,5 @@
-import { type AppRef, type ProcessorFunction, type TimeParams, Phases } from "../components";
+import { type AppRef, Phases } from "../components";
+import { type ProcessorFunction, type TimeParams } from "../core";
 import { Disposable } from "../core";
 
 /**

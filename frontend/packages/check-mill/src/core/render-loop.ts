@@ -1,5 +1,4 @@
-import { DisposableStore, assert, event } from "../core";
-import { type Component } from "./component";
+import { assert } from "../core";
 
 /**
  * Parameters passed by the render loop on each frame.
@@ -16,7 +15,7 @@ export type TimeParams = {
 /**
  * Represents the interface for a Render Loop that can be started and stopped.
  */
-export interface RenderLoopType extends Component {
+export interface RenderLoopType {
   start(): void;
   stop(): void;
 }
@@ -25,7 +24,6 @@ export interface RenderLoopType extends Component {
  * Creates a Render Loop system that controls the flow of updates and rendering.
  * The render loop runs updates at a fixed timestep and performs rendering with a variable alpha based on the timestep.
  *
- * @param {Document} ownerDocument - The document object associated with the window.
  * @param {Window} ownerWindow - The window object associated with the document.
  * @param {(timeParams: TimeParams) => void} update - A function that performs the app update logic.
  * @param {(timeParams: TimeParams) => void} render - A function that renders the app state.
@@ -36,7 +34,6 @@ export interface RenderLoopType extends Component {
  * @see [Fix Your Timestep](https://gafferongames.com/post/fix_your_timestep/)
  */
 export function RenderLoop(
-  ownerDocument: Document,
   ownerWindow: Window,
   update: (timeParams: TimeParams) => void,
   render: (timeParams: TimeParams) => void,
@@ -73,32 +70,6 @@ export function RenderLoop(
    * Fixed time step for each update (in milliseconds)
    */
   const fixedTimeStep = 1000 / fps;
-
-  /**
-   * Disposable store for managing cleanup functions.
-   */
-  const disposable = DisposableStore();
-
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function init(): Promise<void> {
-    disposable.pushStatic(event(ownerDocument, "visibilitychange", onVisibilityChange));
-
-    return Promise.resolve();
-  }
-
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function destroy(): Promise<void> {
-    disposable.flushAll();
-    stop();
-
-    return Promise.resolve();
-  }
 
   /**
    * Starts the loop by requesting the first animation frame.
@@ -161,21 +132,7 @@ export function RenderLoop(
     animationId = ownerWindow.requestAnimationFrame(tick);
   }
 
-  /**
-   * Handles visibility changes of the window.
-   * Stops the loop when the window is hidden.
-   *
-   * @param {Event} _event - The visibility change event.
-   */
-  function onVisibilityChange(_event: Event): void {
-    if (ownerDocument.hidden) {
-      stop();
-    }
-  }
-
   return {
-    init,
-    destroy,
     start,
     stop,
   };

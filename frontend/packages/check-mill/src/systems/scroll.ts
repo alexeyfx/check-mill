@@ -13,7 +13,7 @@ import {
 import { type Disposable, call, flush } from "../core";
 import { type AppSystem } from "./system";
 
-export const GesturesSystem: AppSystem = (appRef: AppRef) => {
+export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   const drag = Drag(appRef.owner.root, appRef.axis);
   const wheel = Wheel(appRef.owner.root, appRef.axis);
 
