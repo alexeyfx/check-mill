@@ -49,8 +49,7 @@ const processWheelScroll: AppProcessorFunction = (app, _timeParams) => {
 
   for (const event of events) {
     motion.previous = motion.current;
-    motion.current += event.delta;
-    motion.velocity = 0;
+    motion.velocity = event.delta;
   }
 
   events.length = 0;

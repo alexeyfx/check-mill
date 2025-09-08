@@ -44,7 +44,7 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
    */
   function onWheel(event: WheelEvent) {
     const delta = readPoint(event);
-    const gEvent = gestureEvent(GestureType.Wheel, revert(delta), GestureState.Update);
+    const gEvent = gestureEvent(GestureType.Wheel, GestureState.Update, revert(delta));
     wheeled.emit(gEvent);
 
     prevent(event, true);
