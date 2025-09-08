@@ -1,11 +1,14 @@
-import { type BitwiseFlags, createFlagManager } from "../core";
+import {
+  type BitwiseFlags,
+  type ProcessorFunction,
+  type TimeParams,
+  createFlagManager,
+} from "../core";
 import { assert } from "../core";
 import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
 import { type GestureEvent } from "./gestures";
 import { Layout } from "./layout";
-import { type ProcessorFunction } from "./processor";
-import { type TimeParams } from "./render-loop";
 import { type ScrollMotionType, ScrollMotion } from "./scroll-motion";
 import { type SlidesCollectionType, Slides } from "./slides";
 import { type ViewportType, Viewport } from "./viewport";
@@ -48,19 +51,10 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
   const window = document.defaultView;
   assert(window, "Window object not available for provided root element");
 
-  /** App's state component */
-  const dirtyFlags = createFlagManager(AppDirtyFlags.None);
-
-  /** Scroll direction component */
   const axis = Axis("y");
-
-  /** Scroll motion component */
   const motion = ScrollMotion();
-
-  /** Viewport component */
   const viewport = Viewport(root);
-
-  /** Layout component */
+  const dirtyFlags = createFlagManager(AppDirtyFlags.None);
   const layout = new Layout({
     gridGap: 8,
     checkboxSize: 24,
@@ -74,8 +68,6 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
     ghostSlidesMult: 2,
     totalCells: 1_048_560,
   });
-
-  /** Slides component */
   const slides = Slides(new SlideFactory(document), layout.metrics());
 
   return {

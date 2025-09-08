@@ -1,20 +1,20 @@
+import { type AppProcessorFunction, type AppRef, AppDirtyFlags, Phases, App } from "./components";
 import {
-  type AppProcessorFunction,
-  type AppRef,
   type PhasePredicate,
+  type RenderLoopType,
   type TimeParams,
-  AppDirtyFlags,
-  Phases,
-  App,
   Processor,
   RenderLoop,
-} from "./components";
-import { GesturesSystem, RenderSystem, UpdateSystem } from "./systems";
+  DisposableStore,
+  event,
+} from "./core";
+import { ScrollSystem, RenderSystem, UpdateSystem } from "./systems";
 
 export type CheckMillType = void;
 
 export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<CheckMillType> {
   const appRef = App(root, container);
+  const disposable = DisposableStore();
 
   const ioPhase = Processor.phase<AppRef, TimeParams>(Phases.IO).runIf(isInteracted);
   const updatePhase = Processor.phase<AppRef, TimeParams>(Phases.Update);
@@ -25,8 +25,8 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
 
   // prettier-ignore
   const systems = [
+    ScrollSystem(appRef),
     UpdateSystem(appRef),
-    GesturesSystem(appRef),
     RenderSystem(appRef),
   ];
 
@@ -37,29 +37,38 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
     cleanUpPhase.pipe(system.logic[Phases.Cleanup] ?? []);
   }
 
-  const destroyers = systems.map((system) => system.init());
+  disposable.pushStatic(...systems.map((system) => system.init()));
 
   // prettier-ignore
-  const updateExecutor = Processor
+  const readExecutor = Processor
     .merge([ioPhase, updatePhase].map(p => p.runner()))
     .executor()
     .bind(null, appRef);
 
   // prettier-ignore
-  const renderExecutor = Processor
+  const writeExecutor = Processor
     .merge([renderPhase, cleanUpPhase].map(p => p.runner()))
     .executor()
     .bind(null, appRef);
 
+  // prettier-ignore
   const renderLoop = RenderLoop(
-    appRef.owner.document,
     appRef.owner.window,
-    updateExecutor,
-    renderExecutor,
+    readExecutor,
+    writeExecutor,
     60 /* fps */
   );
 
-  renderLoop.init().then(() => renderLoop.start());
+  renderLoop.start();
+
+  disposable.pushStatic(
+    event(
+      appRef.owner.document,
+      "visibilitychange",
+      onVisibilityChange.bind(null, appRef, renderLoop)
+    )
+  );
+
   return Promise.resolve();
 }
 
@@ -70,4 +79,10 @@ const isInteracted: PhasePredicate<AppRef> = (appRef: AppRef): boolean => {
 const resetInteractionState: AppProcessorFunction = (appRef: AppRef): AppRef => {
   appRef.dirtyFlags.unset(AppDirtyFlags.Interacted);
   return appRef;
+};
+
+const onVisibilityChange = (appRef: AppRef, renderLoop: RenderLoopType, _event: Event): void => {
+  if (appRef.owner.document.hidden) {
+    renderLoop.stop();
+  }
 };
