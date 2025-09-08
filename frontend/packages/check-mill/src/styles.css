@@ -35,10 +35,10 @@
   content-visibility: auto;
   opacity: 0;
   transition: 0.3s ease-in-out;
-}
 
-.fade-in {
-  opacity: 1;
+  &:not(:empty) {
+    opacity: 1;
+  }
 }
 
 input[type="checkbox"] {
@@ -46,13 +46,4 @@ input[type="checkbox"] {
   width: var(--checkbox-size);
   aspect-ratio: 1;
   transform: translateZ(0);
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
 }

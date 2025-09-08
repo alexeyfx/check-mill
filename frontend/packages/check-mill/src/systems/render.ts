@@ -8,6 +8,7 @@ import {
   Translate,
   SlidesInView,
   writeVariables,
+  appProcessorThrottled,
 } from "../components";
 import { noop } from "../core";
 import { type AppSystem } from "./system";
@@ -32,6 +33,7 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     appRef.owner.root,
     appRef.slides
   );
+  slidesInView.init();
 
   // prettier-ignore
   const renderer = SlidesRenderer(
@@ -66,14 +68,14 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
   const syncVisibility: AppProcessorFunction = (app: AppRef, _timeParams) => {
     const records = slidesInView.takeRecords();
 
-    for (const record of records) {
-      switch (record) {
+    for (let i = 0; i < records.length; i++) {
+      switch (records[i]) {
         case -1:
-          renderer.fadeOut(app.slides[record], app.motion);
+          renderer.fadeOut(app.slides[i], app.motion);
           break;
 
         case 1:
-          renderer.fadeIn(app.slides[record], app.motion);
+          renderer.fadeIn(app.slides[i], app.motion);
           break;
       }
     }
@@ -89,7 +91,7 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
   return {
     init: () => noop,
     logic: {
-      [Phases.Render]: [lerp, loop, syncVisibility, applyTranslation],
+      [Phases.Render]: [lerp, loop, appProcessorThrottled(syncVisibility, 300), applyTranslation],
     },
   };
 };
