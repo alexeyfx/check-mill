@@ -20,9 +20,8 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): Promise<void> {
+  function init(): void {
     disposable.pushStatic(wheeled.clear, event(root, "wheel", onWheel));
-    return Promise.resolve();
   }
 
   /**
@@ -48,9 +47,8 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
    * @internal
    * Component lifecycle method.
    */
-  function destroy(): Promise<void> {
+  function destroy(): void {
     disposable.flushAll();
-    return Promise.resolve();
   }
 
   return {

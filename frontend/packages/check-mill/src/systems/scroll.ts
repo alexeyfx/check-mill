@@ -10,25 +10,24 @@ import {
   disableSlidePointerEvents,
   enableSlidePointerEvents,
 } from "../components";
-import { type Disposable, call, flush } from "../core";
+import { type Disposable, DisposableStore } from "../core";
 import { type AppSystem } from "./system";
 
 export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   const drag = Drag(appRef.owner.root, appRef.axis);
   const wheel = Wheel(appRef.owner.root, appRef.axis);
+  const disposable = DisposableStore();
 
-  const cleanup = () => flush([drag.destroy, wheel.destroy], call);
+  disposable.pushStatic(drag.destroy, wheel.destroy);
 
   const init = (): Disposable => {
-    // prettier-ignore
-    Promise
-      .allSettled([drag, wheel].map(g => g.init()))
-      .then(() => {
-        drag.register(handleDragScroll.bind(null, appRef));
-        wheel.register(handleWheelScroll.bind(null, appRef));
-      });
+    drag.init();
+    wheel.init();
 
-    return cleanup;
+    drag.register((event) => handleDragScroll(appRef, event));
+    wheel.register((event) => handleWheelScroll(appRef, event));
+
+    return () => disposable.flushAll();
   };
 
   return {
@@ -39,14 +38,14 @@ export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   };
 };
 
-const handleWheelScroll = (appRef: AppRef, event: GestureEvent): void => {
-  appRef.wheelEvents.push(event);
-  appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
+const handleWheelScroll = (app: AppRef, event: GestureEvent): void => {
+  app.wheelEvents.push(event);
+  app.dirtyFlags.set(AppDirtyFlags.Interacted);
 };
 
-const processWheelScroll: AppProcessorFunction = (appRef, _timeParams) => {
-  const events = appRef.wheelEvents;
-  const motion = appRef.motion;
+const processWheelScroll: AppProcessorFunction = (app, _timeParams) => {
+  const events = app.wheelEvents;
+  const motion = app.motion;
 
   for (const event of events) {
     motion.previous = motion.current;
@@ -55,26 +54,26 @@ const processWheelScroll: AppProcessorFunction = (appRef, _timeParams) => {
   }
 
   events.length = 0;
-  return appRef;
+  return app;
 };
 
-const handleDragScroll = (appRef: AppRef, event: GestureEvent): void => {
+const handleDragScroll = (app: AppRef, event: GestureEvent): void => {
   switch (event.state) {
     case GestureState.Initialize:
-      disableSlidePointerEvents(appRef.owner.root);
+      disableSlidePointerEvents(app.owner.root);
       break;
     case GestureState.Finalize:
-      enableSlidePointerEvents(appRef.owner.root);
+      enableSlidePointerEvents(app.owner.root);
       break;
   }
 
-  appRef.dragEvents.push(event);
-  appRef.dirtyFlags.set(AppDirtyFlags.Interacted);
+  app.dragEvents.push(event);
+  app.dirtyFlags.set(AppDirtyFlags.Interacted);
 };
 
-const processDragScroll: AppProcessorFunction = (appRef, _timeParams) => {
-  const events = appRef.dragEvents;
-  const motion = appRef.motion;
+const processDragScroll: AppProcessorFunction = (app, _timeParams) => {
+  const events = app.dragEvents;
+  const motion = app.motion;
 
   for (const event of events) {
     switch (event.state) {
@@ -93,5 +92,5 @@ const processDragScroll: AppProcessorFunction = (appRef, _timeParams) => {
   }
 
   events.length = 0;
-  return appRef;
+  return app;
 };

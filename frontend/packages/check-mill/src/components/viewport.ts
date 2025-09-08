@@ -34,22 +34,19 @@ export function Viewport(root: HTMLElement): ViewportType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): Promise<void> {
+  function init(): void {
     resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(root);
 
     disposable.pushStatic(resized.clear, () => resizeObserver.disconnect());
-
-    return Promise.resolve();
   }
 
   /**
    * @internal
    * Component lifecycle method.
    */
-  function destroy(): Promise<void> {
+  function destroy(): void {
     disposable.flushAll();
-    return Promise.resolve();
   }
 
   function measure(): DOMRect {

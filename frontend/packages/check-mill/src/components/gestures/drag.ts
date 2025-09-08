@@ -51,23 +51,20 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): Promise<void> {
+  function init(): void {
     disposable.pushStatic(
       dragged.clear,
       event(root, "pointerdown", onPointerDown),
       event(root, "click", onMouseClick)
     );
-
-    return Promise.resolve();
   }
 
   /**
    * @internal
    * Component lifecycle method.
    */
-  function destroy(): Promise<void> {
+  function destroy(): void {
     disposable.flushAll();
-    return Promise.resolve();
   }
 
   /**
