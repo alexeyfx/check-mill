@@ -1,4 +1,4 @@
-import { DisposableStore, TypedEvent, event, prevent } from "../../core";
+import { DisposableStoreId, TypedEvent, createDisposableStore, event, prevent } from "../../core";
 import { type AxisType } from "../axis";
 import { type Component } from "../component";
 import {
@@ -40,7 +40,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   /**
    * Disposable store for managing cleanup functions.
    */
-  const disposable = DisposableStore();
+  const disposables = createDisposableStore();
 
   /**
    * Returns a reader for the drag event stream.
@@ -52,7 +52,8 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Component lifecycle method.
    */
   function init(): void {
-    disposable.pushStatic(
+    disposables.push(
+      DisposableStoreId.Static,
       dragged.clear,
       event(root, "pointerdown", onPointerDown),
       event(root, "click", onMouseClick)
@@ -64,7 +65,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Component lifecycle method.
    */
   function destroy(): void {
-    disposable.flushAll();
+    disposables.flushAll();
   }
 
   /**
@@ -106,7 +107,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
     const gEvent = gestureEvent(GestureType.Drag, GestureState.Finalize, 10 * acceleration);
 
     dragged.emit(gEvent);
-    disposable.flushTemporal();
+    disposables.flush(DisposableStoreId.Temporal);
   }
 
   /**
@@ -121,7 +122,8 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   }
 
   function addDragEvents(): void {
-    disposable.pushTemporal(
+    disposables.push(
+      DisposableStoreId.Temporal,
       event(root, "pointermove", onPointerMove, { passive: false }),
       event(root, "pointerup", onPointerUp),
       event(root, "pointerout", onPointerUp),

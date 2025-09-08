@@ -1,4 +1,4 @@
-import { DisposableStore } from "../core";
+import { DisposableStoreId, createDisposableStore } from "../core";
 import { type Component } from "./component";
 import { type SlidesCollectionType } from "./slides";
 
@@ -20,7 +20,7 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
   /**
    * Disposable store for managing cleanup functions.
    */
-  const disposable = DisposableStore();
+  const disposables = createDisposableStore();
 
   /**
    * @internal
@@ -38,7 +38,7 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
       observer.observe(nativeElement);
     }
 
-    disposable.pushStatic(observer.disconnect);
+    disposables.push(DisposableStoreId.Static, observer.disconnect);
   }
 
   /**
@@ -46,7 +46,7 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
    * Component lifecycle method.
    */
   function destroy(): void {
-    disposable.flushAll();
+    disposables.flushAll();
   }
 
   function takeRecords(): number[] {
