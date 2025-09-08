@@ -26,7 +26,7 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
    * @internal
    * Component lifecycle method.
    */
-  function init(): Promise<void> {
+  function init(): void {
     const observer = new IntersectionObserver(handleIntersection, {
       root,
       rootMargin: "0px",
@@ -39,18 +39,14 @@ export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): S
     }
 
     disposable.pushStatic(observer.disconnect);
-
-    return Promise.resolve();
   }
 
   /**
    * @internal
    * Component lifecycle method.
    */
-  function destroy(): Promise<void> {
+  function destroy(): void {
     disposable.flushAll();
-
-    return Promise.resolve();
   }
 
   function takeRecords(): number[] {
