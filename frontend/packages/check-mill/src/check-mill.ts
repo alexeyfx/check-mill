@@ -42,26 +42,26 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
   // prettier-ignore
   const readExecutor = Processor
     .merge([ioPhase, updatePhase].map(p => p.runner()))
-    .executor()
-    .bind(null, appRef);
+    .executor();
 
   // prettier-ignore
   const writeExecutor = Processor
     .merge([renderPhase, cleanUpPhase].map(p => p.runner()))
-    .executor()
-    .bind(null, appRef);
+    .executor();
 
   // prettier-ignore
   const renderLoop = RenderLoop(
     appRef.owner.window,
-    readExecutor,
-    writeExecutor,
+    (t) => readExecutor(appRef, t),
+    (t) => writeExecutor(appRef, t),
     60 /* fps */
   );
 
   const onVisibilityChange = (_event: Event): void => {
     if (appRef.owner.document.hidden) {
       renderLoop.stop();
+    } else {
+      renderLoop.start();
     }
   };
 
