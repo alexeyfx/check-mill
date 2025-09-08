@@ -7,6 +7,7 @@ import {
   SlidesRenderer,
   Translate,
   SlidesInView,
+  writeVariables,
 } from "../components";
 import { noop } from "../core";
 import { type AppSystem } from "./system";
@@ -39,6 +40,9 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     appRef.axis,
     appRef.layout.metrics()
   );
+
+  writeVariables(appRef.owner.root, appRef.layout.metrics());
+  renderer.appendSlides(appRef.slides);
 
   const translate = Translate(appRef.axis);
 

@@ -1,7 +1,6 @@
 import { type AppProcessorFunction, type AppRef, AppDirtyFlags, Phases, App } from "./components";
 import {
   type PhasePredicate,
-  type RenderLoopType,
   type TimeParams,
   DisposableStoreId,
   Processor,
@@ -60,15 +59,17 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
     60 /* fps */
   );
 
+  const onVisibilityChange = (_event: Event): void => {
+    if (appRef.owner.document.hidden) {
+      renderLoop.stop();
+    }
+  };
+
   renderLoop.start();
 
   disposables.push(
     DisposableStoreId.Static,
-    event(
-      appRef.owner.document,
-      "visibilitychange",
-      onVisibilityChange.bind(null, appRef, renderLoop)
-    )
+    event(appRef.owner.document, "visibilitychange", onVisibilityChange)
   );
 
   return Promise.resolve();
@@ -81,10 +82,4 @@ const isInteracted: PhasePredicate<AppRef> = (appRef: AppRef): boolean => {
 const resetInteractionState: AppProcessorFunction = (appRef: AppRef): AppRef => {
   appRef.dirtyFlags.unset(AppDirtyFlags.Interacted);
   return appRef;
-};
-
-const onVisibilityChange = (appRef: AppRef, renderLoop: RenderLoopType, _event: Event): void => {
-  if (appRef.owner.document.hidden) {
-    renderLoop.stop();
-  }
 };

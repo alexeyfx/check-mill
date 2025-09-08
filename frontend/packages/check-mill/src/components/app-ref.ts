@@ -62,10 +62,10 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
     containerGap: 12,
     containerPadding: [12, 12],
     viewportRect: viewport.measure(),
-    slideMinClampedHeight: 300,
-    slideMaxHeightPercent: 70,
+    slideMinClampedHeight: 150,
+    slideMaxHeightPercent: 30,
     slideMaxWidth: 1024,
-    ghostSlidesMult: 2,
+    ghostSlidesMult: 3,
     totalCells: 1_048_560,
   });
   const slides = Slides(new SlideFactory(document), layout.metrics());
