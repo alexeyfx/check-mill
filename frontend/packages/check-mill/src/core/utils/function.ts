@@ -25,12 +25,14 @@ export function throttle<T extends (...args: any[]) => void>(
   let lastCall = 0;
 
   return (...args: Parameters<T>) => {
-    const now = Date.now();
+    const now = performance.now();
 
     if (now - lastCall >= limit) {
       lastCall = now;
-      func(...args);
+      return func(...args);
     }
+
+    return args;
   };
 }
 

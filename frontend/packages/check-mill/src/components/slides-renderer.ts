@@ -81,13 +81,7 @@ export function SlidesRenderer(
       clones.push(checkboxRowFragments[i].cloneNode(true));
     }
 
-    requestAnimationFrame(() => {
-      container.classList.add("fade-in");
-
-      for (let i = 0; i < clones.length; i++) {
-        container.append(clones[i]);
-      }
-    });
+    container.append(...clones);
   }
 
   /**
@@ -99,10 +93,7 @@ export function SlidesRenderer(
     const { nativeElement } = slide;
     const container = nativeElement.firstElementChild as HTMLElement;
 
-    requestAnimationFrame(() => {
-      container.replaceChildren();
-      container.classList.remove("fade-in");
-    });
+    container.replaceChildren();
   }
 
   /**

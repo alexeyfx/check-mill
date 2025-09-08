@@ -46,6 +46,35 @@ export interface AppRef {
 
 export type AppProcessorFunction = ProcessorFunction<AppRef, TimeParams>;
 
+/**
+ * Creates a throttled version of a processor function that only invokes the
+ * original function at most once per every `delay` milliseconds.
+ *
+ * This is ideal for expensive, repeated operations within a render loop, such
+ * as visibility checks or DOM measurements.
+ *
+ * @param fn The processor function to throttle.
+ * @param delay The throttle duration in milliseconds.
+ * @returns A new processor function that wraps the original with throttle logic.
+ */
+export function appProcessorThrottled(
+  fn: AppProcessorFunction,
+  delay: number
+): AppProcessorFunction {
+  let lastExecutionTime = -Infinity;
+
+  return (appRef, timeParams) => {
+    const currentTime = timeParams.t;
+
+    if (currentTime - lastExecutionTime >= delay) {
+      lastExecutionTime = currentTime;
+      return fn(appRef, timeParams);
+    }
+
+    return appRef;
+  };
+}
+
 export function App(root: HTMLElement, container: HTMLElement): AppRef {
   const document = root.ownerDocument;
   const window = document.defaultView;
