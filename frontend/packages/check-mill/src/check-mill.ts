@@ -3,9 +3,10 @@ import {
   type PhasePredicate,
   type RenderLoopType,
   type TimeParams,
+  DisposableStoreId,
   Processor,
   RenderLoop,
-  DisposableStore,
+  createDisposableStore,
   event,
 } from "./core";
 import { ScrollSystem, RenderSystem, UpdateSystem } from "./systems";
@@ -14,7 +15,7 @@ export type CheckMillType = void;
 
 export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<CheckMillType> {
   const appRef = App(root, container);
-  const disposable = DisposableStore();
+  const disposables = createDisposableStore();
 
   const ioPhase = Processor.phase<AppRef, TimeParams>(Phases.IO).runIf(isInteracted);
   const updatePhase = Processor.phase<AppRef, TimeParams>(Phases.Update);
@@ -37,7 +38,7 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
     cleanUpPhase.pipe(system.logic[Phases.Cleanup] ?? []);
   }
 
-  disposable.pushStatic(...systems.map((system) => system.init()));
+  disposables.push(DisposableStoreId.Static, ...systems.map((system) => system.init()));
 
   // prettier-ignore
   const readExecutor = Processor
@@ -61,7 +62,8 @@ export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<Ch
 
   renderLoop.start();
 
-  disposable.pushStatic(
+  disposables.push(
+    DisposableStoreId.Static,
     event(
       appRef.owner.document,
       "visibilitychange",

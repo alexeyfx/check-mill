@@ -10,15 +10,15 @@ import {
   disableSlidePointerEvents,
   enableSlidePointerEvents,
 } from "../components";
-import { type Disposable, DisposableStore } from "../core";
+import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type AppSystem } from "./system";
 
 export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   const drag = Drag(appRef.owner.root, appRef.axis);
   const wheel = Wheel(appRef.owner.root, appRef.axis);
-  const disposable = DisposableStore();
+  const disposables = createDisposableStore();
 
-  disposable.pushStatic(drag.destroy, wheel.destroy);
+  disposables.push(DisposableStoreId.Static, drag.destroy, wheel.destroy);
 
   const init = (): Disposable => {
     drag.init();
@@ -27,7 +27,7 @@ export const ScrollSystem: AppSystem = (appRef: AppRef) => {
     drag.register((event) => handleDragScroll(appRef, event));
     wheel.register((event) => handleWheelScroll(appRef, event));
 
-    return () => disposable.flushAll();
+    return () => disposables.flushAll();
   };
 
   return {
