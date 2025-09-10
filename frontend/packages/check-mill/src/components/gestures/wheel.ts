@@ -1,4 +1,5 @@
 import {
+  type Disposable,
   DisposableStoreId,
   TypedEvent,
   createDisposableStore,
@@ -8,16 +9,17 @@ import {
 } from "../../core";
 import { type AxisType } from "../axis";
 import { type Component } from "../component";
-import { type GestureEvent, Gesture, GestureState, GestureType, gestureEvent } from "./gesture";
+import {
+  type GestureEvent,
+  type Gesture,
+  GestureState,
+  GestureType,
+  gestureEvent,
+} from "./gesture";
 
 export interface WheelType extends Component, Gesture {}
 
 export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
-  /**
-   * Disposable store for managing cleanup functions.
-   */
-  const disposables = createDisposableStore();
-
   /**
    * Returns a reader for the wheel event stream.
    */
@@ -27,16 +29,11 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): void {
+  function init(): Disposable {
+    const disposables = createDisposableStore();
     disposables.push(DisposableStoreId.Static, wheeled.clear, event(root, "wheel", onWheel));
-  }
 
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function destroy(): void {
-    disposables.flushAll();
+    return () => disposables.flushAll();
   }
 
   /**
@@ -60,7 +57,6 @@ export function Wheel(root: HTMLElement, axis: AxisType): WheelType {
 
   return {
     init,
-    destroy,
     register: wheeled.register,
   };
 }

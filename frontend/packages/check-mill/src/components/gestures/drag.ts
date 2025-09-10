@@ -1,4 +1,11 @@
-import { DisposableStoreId, TypedEvent, createDisposableStore, event, prevent } from "../../core";
+import {
+  type Disposable,
+  DisposableStoreId,
+  TypedEvent,
+  createDisposableStore,
+  event,
+  prevent,
+} from "../../core";
 import { type AxisType } from "../axis";
 import { type Component } from "../component";
 import {
@@ -51,21 +58,15 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): void {
+  function init(): Disposable {
     disposables.push(
       DisposableStoreId.Static,
       dragged.clear,
       event(root, "pointerdown", onPointerDown),
       event(root, "click", onMouseClick)
     );
-  }
 
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function destroy(): void {
-    disposables.flushAll();
+    return () => disposables.flushAll();
   }
 
   /**
@@ -177,7 +178,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
 
   return {
     init,
-    destroy,
     register: dragged.register,
   };
 }

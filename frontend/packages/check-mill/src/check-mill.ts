@@ -1,7 +1,6 @@
 import {
   type AppProcessorFunction,
   type AppRef,
-  type ViewportType,
   AppDirtyFlags,
   Phases,
   App,
@@ -16,6 +15,7 @@ import {
   RenderLoop,
   createDisposableStore,
   event,
+  throttle,
 } from "./core";
 import { NetworkSystem, RenderSystem, ScrollSystem, UpdateSystem } from "./systems";
 
@@ -34,15 +34,12 @@ class Application {
   private appRef: AppRef;
   private disposables = createDisposableStore();
   private renderLoop: RenderLoopType;
-  private viewport: ViewportType;
 
   private readExecutor: AppProcessorFunction | null = null;
   private writeExecutor: AppProcessorFunction | null = null;
 
   constructor(root: HTMLElement, container: HTMLElement) {
     this.appRef = App(root, container);
-    this.viewport = Viewport(root);
-    this.viewport.init();
 
     this.setupStaticListeners();
     this.reconfigure();
@@ -53,6 +50,8 @@ class Application {
       (t) => this.writeExecutor!(this.appRef, t),
       60 /* fps */
     );
+
+    this.renderLoop.start();
   }
 
   /**
@@ -68,6 +67,9 @@ class Application {
    */
   private reconfigure(): void {
     this.disposables.flush(DisposableStoreId.Reconfigurable);
+
+    const prevAppRef = this.appRef;
+    this.appRef = App(prevAppRef.owner.root, prevAppRef.owner.container);
 
     const ioPhase = Processor.phase<AppRef, TimeParams>(Phases.IO).runIf(isInteracted);
     const updatePhase = Processor.phase<AppRef, TimeParams>(Phases.Update);
@@ -108,6 +110,11 @@ class Application {
    * Sets up long-lived event listeners like ResizeObserver.
    */
   private setupStaticListeners(): void {
+    const viewport = Viewport(this.appRef.owner.root);
+    const throttledReconfigure = throttle(() => this.reconfigure(), 300);
+
+    viewport.resized.register(throttledReconfigure);
+
     const onVisibilityChange = (_event: Event): void => {
       if (this.appRef.owner.document.hidden) {
         this.renderLoop.stop();
@@ -116,11 +123,9 @@ class Application {
       }
     };
 
-    this.viewport.resized.register(() => this.reconfigure());
-
     this.disposables.push(
       DisposableStoreId.Static,
-      this.viewport.destroy,
+      viewport.init(),
       event(this.appRef.owner.document, "visibilitychange", onVisibilityChange)
     );
   }

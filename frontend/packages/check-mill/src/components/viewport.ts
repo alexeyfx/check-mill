@@ -1,4 +1,10 @@
-import { type EventReader, DisposableStoreId, TypedEvent, createDisposableStore } from "../core";
+import {
+  type Disposable,
+  type EventReader,
+  DisposableStoreId,
+  TypedEvent,
+  createDisposableStore,
+} from "../core";
 import { type Component } from "./component";
 
 export interface ViewportType extends Component {
@@ -16,16 +22,6 @@ export function Viewport(root: HTMLElement): ViewportType {
   let memoRect: DOMRect = root.getBoundingClientRect();
 
   /**
-   * ResizeObserver instance attached to the root element.
-   */
-  let resizeObserver: ResizeObserver;
-
-  /**
-   * Disposable store for managing cleanup functions.
-   */
-  const disposables = createDisposableStore();
-
-  /**
    * Returns a reader for the resize event stream.
    */
   const resized = new TypedEvent<DOMRect>();
@@ -34,19 +30,14 @@ export function Viewport(root: HTMLElement): ViewportType {
    * @internal
    * Component lifecycle method.
    */
-  function init(): void {
-    resizeObserver = new ResizeObserver(onResize);
+  function init(): Disposable {
+    const resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(root);
 
+    const disposables = createDisposableStore();
     disposables.push(DisposableStoreId.Static, resized.clear, () => resizeObserver.disconnect());
-  }
 
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
-  function destroy(): void {
-    disposables.flushAll();
+    return () => disposables.flushAll();
   }
 
   function measure(): DOMRect {
@@ -60,7 +51,6 @@ export function Viewport(root: HTMLElement): ViewportType {
 
   return {
     init,
-    destroy,
     measure,
     resized,
   };
