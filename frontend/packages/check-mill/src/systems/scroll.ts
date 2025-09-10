@@ -14,18 +14,18 @@ import { type Disposable, DisposableStoreId, createDisposableStore } from "../co
 import { type AppSystem } from "./system";
 
 export const ScrollSystem: AppSystem = (appRef: AppRef) => {
-  const drag = Drag(appRef.owner.root, appRef.axis);
-  const wheel = Wheel(appRef.owner.root, appRef.axis);
-  const disposables = createDisposableStore();
-
-  disposables.push(DisposableStoreId.Static, drag.destroy, wheel.destroy);
-
   const init = (): Disposable => {
+    const drag = Drag(appRef.owner.root, appRef.axis);
+    const wheel = Wheel(appRef.owner.root, appRef.axis);
+    const disposables = createDisposableStore();
+
     drag.init();
     wheel.init();
 
     drag.register((event) => handleDragScroll(appRef, event));
     wheel.register((event) => handleWheelScroll(appRef, event));
+
+    disposables.push(DisposableStoreId.Static, drag.destroy, wheel.destroy);
 
     return () => disposables.flushAll();
   };

@@ -15,9 +15,13 @@ type SystemLogic<T, P = unknown> = {
  * It handles its own setup and teardown.
  */
 export type System<T, P = unknown> = (appRef: T) => {
-  // One-time setup that returns a teardown function.
+  /**
+   * One-time setup that returns a teardown function
+   */
   init: () => Disposable;
-  // Provides the per-frame processing functions.
+  /**
+   * Provides the per-frame processing functions.
+   */
   logic: SystemLogic<T, P>;
 };
 

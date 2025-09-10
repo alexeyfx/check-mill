@@ -1,98 +1,117 @@
-import { between } from "../core";
-import { LayoutMetrics } from "./layout";
-import { type ScrollMotionType } from "./scroll-motion";
-import { type SlidesCollectionType } from "./slides";
-import { type ViewportType } from "./viewport";
+import { type AppRef } from "./app-ref";
+import { type SlidesCollectionType, type SlideType } from "./slides";
 
-export interface SlidesLooperType {
-  loop(): boolean;
+/**
+ * Possible looping operations.
+ * 'None' is the default state where slides are in their original positions.
+ */
+export enum LoopOperation {
+  None,
+  ShiftLeft,
+  ShiftRight,
 }
 
 /**
- * Creates a slide looper that enables seamless looping of slides by conditionally
- * shifting the first or last slide when the user scrolls past the content bounds.
- *
- * @param viewport - The viewport through which the slides are visible.
- * @param metrics - Layout metrics including dimensions of content and slides.
- * @param motion - Provides current scroll offset.
- * @param slides - An array of slide elements.
- * @returns An object implementing `SlidesLooperType`.
- *
- * ---
- * ### Slide Layout Example:
- * ```
- * |---------------------|
- * |1|-|2|-|3|-|4|-|5|-|6|
- * |---------------------|
- * ```
- * - `leftEdge = offset`
- * - `rightEdge = offset + contentHeight`
- *
- * ### Loop Conditions:
- * - If `leftEdge > 0` → user scrolled before start → shift last slide to front
- * - If `rightEdge < viewport.height` → user scrolled past end → shift first slide to back
+ * The state required for the looping logic.
+ * This would be part of your main application state object.
  */
-export function SlidesLooper(
-  viewport: ViewportType,
-  metrics: LayoutMetrics,
-  motion: ScrollMotionType,
-  slides: SlidesCollectionType
-): SlidesLooperType {
-  const viewportHeight = viewport.measure().height;
+export interface LoopingState {
+  readonly slides: SlidesCollectionType;
+  readonly lastLoopOperation: LoopOperation;
+}
 
-  const translatesPerShift = Math.ceil(viewportHeight / metrics.slideHeight);
+/**
+ * The output of the pure looping function.
+ * The caller is responsible for updating its state with this result.
+ */
+export interface LoopResult {
+  readonly slides: SlidesCollectionType;
+  readonly currentLoopOperation: LoopOperation;
+}
 
-  const noneOverflowable = metrics.totalSlides - translatesPerShift;
+/**
+ * A pure, stateless function that calculates the next state for looping slides.
+ * It does not modify any input and has no internal state or side effects.
+ *
+ * @param state The current state of the application (or relevant parts).
+ * @returns A LoopResult containing the new slides array and the current operation.
+ */
+export function createSlidesLooper() {
+  let lastLoopOperation = LoopOperation.None;
 
-  let lastOperation: VoidFunction = resetShift;
+  return (appRef: AppRef): void => {
+    const { slides, motion, layout } = appRef;
 
-  function loop(): boolean {
     const leftEdge = motion.offset;
-    const rightedge = leftEdge + metrics.contentHeight;
+    const rightEdge = leftEdge + layout.contentArea.height;
+    const viewportHeight = layout.viewportRect.height;
 
-    let moved = false;
-    let currentOperation: VoidFunction = resetShift;
-
-    if (between(leftEdge, 0, viewportHeight)) {
-      currentOperation = shiftRight;
+    let desiredOperation = LoopOperation.None;
+    if (leftEdge > 0) {
+      desiredOperation = LoopOperation.ShiftRight;
+    } else if (rightEdge < viewportHeight) {
+      desiredOperation = LoopOperation.ShiftLeft;
     }
 
-    if (between(rightedge, 0, viewportHeight)) {
-      currentOperation = shiftLeft;
+    if (desiredOperation !== lastLoopOperation) {
+      applyShift(slides, desiredOperation, layout.slideCount.buffer);
     }
 
-    if (currentOperation !== lastOperation) {
-      moved = true;
+    lastLoopOperation = desiredOperation;
+  };
+}
 
-      resetShift();
-      currentOperation();
-    }
+/**
+ * A helper function that returns a NEW array of slides with transformations applied.
+ * This ensures the operation is immutable.
+ */
+function applyShift(
+  slides: SlidesCollectionType,
+  operation: LoopOperation,
+  totalSlides: number
+): void {
+  const shiftLength = Math.ceil(totalSlides / 3); // Example value
 
-    lastOperation = currentOperation;
+  switch (operation) {
+    case LoopOperation.ShiftRight:
+      slides.forEach((slide, index) => {
+        if (index >= slides.length - shiftLength) {
+          slide.virtualIndex -= totalSlides;
+          slide.viewportOffset = -1;
+          return;
+        }
 
-    return moved;
+        resetSlide(slide);
+      });
+      break;
+
+    case LoopOperation.ShiftLeft:
+      slides.forEach((slide, index) => {
+        if (index < shiftLength) {
+          slide.virtualIndex += totalSlides;
+          slide.viewportOffset = 1;
+          return;
+        }
+
+        resetSlide(slide);
+      });
+      break;
+
+    case LoopOperation.None:
+      slides.forEach(resetSlide);
   }
+}
 
-  function shiftRight(): void {
-    for (const slide of slides.slice(-1 * translatesPerShift)) {
-      slide.virtualIndex -= noneOverflowable;
-      slide.viewportOffset = -1;
-    }
+/**
+ * Returns a new slide object in its default, non-shifted state.
+ */
+function resetSlide(slide: SlideType): SlideType {
+  if (slide.virtualIndex === slide.realIndex && slide.viewportOffset === 0) {
+    return slide;
   }
-
-  function shiftLeft(): void {
-    for (const slide of slides.slice(0, translatesPerShift)) {
-      slide.virtualIndex += noneOverflowable - 1;
-      slide.viewportOffset = 1;
-    }
-  }
-
-  function resetShift(): void {
-    for (const slide of slides) {
-      slide.virtualIndex = slide.realIndex;
-      slide.viewportOffset = 0;
-    }
-  }
-
-  return { loop };
+  return {
+    ...slide,
+    virtualIndex: slide.realIndex,
+    viewportOffset: 0,
+  };
 }

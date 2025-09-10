@@ -8,10 +8,9 @@ import { assert } from "../core";
 import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
 import { type GestureEvent } from "./gestures";
-import { Layout } from "./layout";
+import { type LayoutProperties, createLayout } from "./layout";
 import { type ScrollMotionType, ScrollMotion } from "./scroll-motion";
 import { type SlidesCollectionType, Slides } from "./slides";
-import { type ViewportType, Viewport } from "./viewport";
 
 // prettier-ignore
 export const enum AppDirtyFlags {
@@ -36,10 +35,9 @@ export interface AppRef {
   };
   axis: AxisType;
   dirtyFlags: BitwiseFlags;
-  layout: Layout;
+  layout: Readonly<LayoutProperties>;
   motion: ScrollMotionType;
   slides: SlidesCollectionType;
-  viewport: ViewportType;
   dragEvents: GestureEvent[];
   wheelEvents: GestureEvent[];
 }
@@ -80,24 +78,26 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
   const window = document.defaultView;
   assert(window, "Window object not available for provided root element");
 
-  const axis = Axis("y");
-  const motion = ScrollMotion();
-  const viewport = Viewport(root);
-  const dirtyFlags = createFlagManager(AppDirtyFlags.None);
-  const layout = new Layout({
-    gridGap: 8,
+  const layout = createLayout({
     checkboxSize: 24,
-    slidePadding: [12, 12],
-    containerGap: 12,
-    containerPadding: [12, 12],
-    viewportRect: viewport.measure(),
-    slideMinClampedHeight: 150,
-    slideMaxHeightPercent: 30,
+    gridSpacing: 8,
+    viewportRect: root.getBoundingClientRect(),
+    loopBufferSizeRatio: 3,
+    containerPadding: {
+      vertical: 12,
+      horizontal: 12,
+    },
+    slideSpacing: 12,
     slideMaxWidth: 1024,
-    ghostSlidesMult: 3,
-    totalCells: 1_048_560,
+    slideMaxHeightAsViewportRatio: 30,
+    slideMinHeightInPx: 100,
+    slidePadding: {
+      vertical: 12,
+      horizontal: 12,
+    },
   });
-  const slides = Slides(new SlideFactory(document), layout.metrics());
+
+  const slides = Slides(new SlideFactory(document), layout.slideCount.total);
 
   return {
     owner: {
@@ -106,12 +106,11 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
       root,
       container,
     },
-    dirtyFlags,
-    axis,
-    motion,
     layout,
     slides,
-    viewport,
+    axis: Axis("y"),
+    motion: ScrollMotion(),
+    dirtyFlags: createFlagManager(AppDirtyFlags.None),
     dragEvents: new Array<GestureEvent>(),
     wheelEvents: new Array<GestureEvent>(),
   };

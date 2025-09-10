@@ -1,54 +1,52 @@
-import { type LayoutMetrics } from "./layout";
+import { type AppRef } from "./app-ref";
 import { type ScrollMotionType, move } from "./scroll-motion";
 
-export interface ScrollLooperType {
-  loop(): boolean;
+type LoopBounds = { min: number; max: number };
+
+/**
+ * Checks if the scroll motion has reached the looping bounds and, if so,
+ * instantly translates the motion to the other side to create a seamless
+ * infinite loop effect.
+ *
+ * @param appRef The complete, current application state for this frame.
+ * @returns `true` if the content was looped, otherwise `false`.
+ */
+export function loopScroll(appRef: AppRef): boolean {
+  const { layout, motion } = appRef;
+
+  const jointSafety = 0.1;
+  const maxBound = jointSafety;
+  const minBound =
+    layout.slide.height + layout.slideSpacing - layout.contentArea.height + jointSafety;
+
+  const bounds = { min: minBound, max: maxBound };
+  const needsToLoop = shouldLoop(motion, bounds);
+
+  if (needsToLoop) {
+    const loopDistance = layout.contentArea.height - layout.slideSpacing;
+    const distanceToMove = -1 * motion.direction * loopDistance;
+
+    move(motion, distanceToMove);
+  }
+
+  return needsToLoop;
 }
 
-export function ScrollLooper(motion: ScrollMotionType, metrics: LayoutMetrics): ScrollLooperType {
-  const jointSafety = 0.1;
+function reachedMax(offset: number, bounds: LoopBounds): boolean {
+  return offset >= bounds.max;
+}
 
-  let max = jointSafety;
+function reachedMin(offset: number, bounds: LoopBounds): boolean {
+  return offset <= bounds.min;
+}
 
-  let min = metrics.slideHeight + metrics.containerGap - metrics.contentHeight + jointSafety;
-
-  function loop(): boolean {
-    const { direction } = motion;
-    const moved = shouldLoop(direction);
-
-    if (moved) {
-      const distance = -1 * direction * metrics.contentHeight + direction * metrics.containerGap;
-      move(motion, distance);
-    }
-
-    return moved;
+function shouldLoop(motion: ScrollMotionType, bounds: LoopBounds): boolean {
+  switch (motion.direction) {
+    case -1:
+      return reachedMin(motion.offset, bounds);
+    case 1:
+      return reachedMax(motion.offset, bounds);
+    default:
+      return false;
   }
-
-  function shouldLoop(direction: number): boolean {
-    let reachedBound = false;
-
-    switch (direction) {
-      case -1:
-        reachedBound = reachedMin(motion.offset);
-        break;
-
-      case 1:
-        reachedBound = reachedMax(motion.offset);
-        break;
-    }
-
-    return reachedBound;
-  }
-
-  function reachedMax(offset: number): boolean {
-    return offset >= max;
-  }
-
-  function reachedMin(offset: number): boolean {
-    return offset <= min;
-  }
-
-  return {
-    loop,
-  };
 }
