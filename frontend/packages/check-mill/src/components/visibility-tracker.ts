@@ -1,4 +1,4 @@
-import { DisposableStoreId, createDisposableStore } from "../core";
+import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type Component } from "./component";
 
 /**
@@ -58,9 +58,8 @@ export function createVisibilityTracker(
   const elementCount = elementsToTrack.length;
   const lastRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
   const currentRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
-  const disposables = createDisposableStore();
 
-  function init(): void {
+  function init(): Disposable {
     const observer = new IntersectionObserver(handleIntersection, {
       root,
       threshold: 0,
@@ -72,11 +71,10 @@ export function createVisibilityTracker(
       observer.observe(element);
     }
 
-    disposables.push(DisposableStoreId.Static, observer.disconnect);
-  }
+    const disposables = createDisposableStore();
+    disposables.push(DisposableStoreId.Static, () => observer.disconnect());
 
-  function destroy(): void {
-    disposables.flushAll();
+    return () => disposables.flushAll();
   }
 
   function takeRecords(): VisibilityRecord[] {
@@ -107,5 +105,5 @@ export function createVisibilityTracker(
     }
   }
 
-  return { init, destroy, takeRecords };
+  return { init, takeRecords };
 }

@@ -41,9 +41,7 @@ export function SlidesRenderer(
    * Append the native elements for all slides to the root container.
    */
   function appendSlides(slides: SlidesCollectionType): void {
-    for (let i = 0; i < slides.length; i++) {
-      root.appendChild(slides[i].nativeElement);
-    }
+    root.replaceChildren(...slides.map((slide) => slide.nativeElement));
   }
 
   /**

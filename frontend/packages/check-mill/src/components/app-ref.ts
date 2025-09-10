@@ -89,7 +89,7 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
     },
     slideSpacing: 12,
     slideMaxWidth: 1024,
-    slideMaxHeightAsViewportRatio: 30,
+    slideMaxHeightAsViewportRatio: 0.3,
     slideMinHeightInPx: 100,
     slidePadding: {
       vertical: 12,

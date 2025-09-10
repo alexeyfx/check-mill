@@ -16,16 +16,13 @@ import { type AppSystem } from "./system";
 export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   const init = (): Disposable => {
     const drag = Drag(appRef.owner.root, appRef.axis);
-    const wheel = Wheel(appRef.owner.root, appRef.axis);
-    const disposables = createDisposableStore();
-
-    drag.init();
-    wheel.init();
-
     drag.register((event) => handleDragScroll(appRef, event));
+
+    const wheel = Wheel(appRef.owner.root, appRef.axis);
     wheel.register((event) => handleWheelScroll(appRef, event));
 
-    disposables.push(DisposableStoreId.Static, drag.destroy, wheel.destroy);
+    const disposables = createDisposableStore();
+    disposables.push(DisposableStoreId.Static, drag.init(), wheel.init());
 
     return () => disposables.flushAll();
   };

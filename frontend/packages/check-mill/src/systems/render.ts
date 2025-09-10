@@ -32,7 +32,6 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
       appRef.owner.root,
       appRef.slides.map((s) => s.nativeElement)
     );
-    slidesVisibilityTracker.init();
 
     renderer = SlidesRenderer(
       appRef.owner.document,
@@ -45,7 +44,7 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     writeVariables(appRef.owner.root, appRef.layout);
 
     const disposables = createDisposableStore();
-    disposables.push(DisposableStoreId.Static, slidesVisibilityTracker.destroy);
+    disposables.push(DisposableStoreId.Static, slidesVisibilityTracker.init());
 
     return () => disposables.flushAll();
   };

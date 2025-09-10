@@ -179,9 +179,9 @@ export function computeLayout(config: LayoutConfig): ComputedLayout {
 
   const slidesInViewCount = Math.floor(config.viewportRect.height / finalSlideHeight);
 
-  const bufferCount = Math.ceil(slidesInViewCount * config.loopBufferSizeRatio);
+  const bufferCount = slidesInViewCount * config.loopBufferSizeRatio;
 
-  const totalSlidesCount = slidesInViewCount + bufferCount * 2;
+  const totalSlidesCount = slidesInViewCount + bufferCount;
 
   const contentWidth = finalSlideWidth;
 

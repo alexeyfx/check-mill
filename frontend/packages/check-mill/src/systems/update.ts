@@ -13,7 +13,6 @@ export const UpdateSystem: AppSystem = () => {
 
 const processUpdate: AppProcessorFunction = (app, timeParams) => {
   const motion = app.motion;
-
   const integrated = applyFriction(motion.velocity, 0.75, timeParams.dt);
   const displacement = motion.current + integrated - motion.previous;
 

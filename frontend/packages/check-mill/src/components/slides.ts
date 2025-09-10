@@ -30,8 +30,8 @@ export function Slides(slideFactory: SlideFactory, count: number): SlidesCollect
   const slides = new Array(count);
 
   let index = 0;
-  for (const slideElement of slideFactory.batch(count)) {
-    slides[index] = Slide(slideElement, index, index, 0);
+  for (const nativeElement of slideFactory.batch(count)) {
+    slides[index] = Slide(nativeElement, index, index, 0);
     index += 1;
   }
 
