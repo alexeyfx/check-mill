@@ -2,51 +2,53 @@ import {
   type AppRef,
   type AppProcessorFunction,
   Phases,
-  ScrollLooper,
-  SlidesLooper,
+  VisibilityChange,
   SlidesRenderer,
   Translate,
-  SlidesInView,
-  writeVariables,
   appProcessorThrottled,
+  createSlidesLooper,
+  createVisibilityTracker,
+  loopScroll,
+  writeVariables,
+  TranslateType,
+  VisibilityTrackerType,
+  SlidesRendererType,
 } from "../components";
-import { noop } from "../core";
+import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type AppSystem } from "./system";
 
 export const RenderSystem: AppSystem = (appRef: AppRef) => {
-  // prettier-ignore
-  const scrollLooper = ScrollLooper(
-    appRef.motion,
-    appRef.layout.metrics()
-  );
+  let renderer: SlidesRendererType;
+  let translate: TranslateType;
+  let loopSlides: (appRef: AppRef) => void;
+  let slidesVisibilityTracker: VisibilityTrackerType;
 
-  // prettier-ignore
-  const slidesLooper = SlidesLooper(
-    appRef.viewport,
-    appRef.layout.metrics(),
-    appRef.motion,
-    appRef.slides
-  );
+  const init = (): Disposable => {
+    loopSlides = createSlidesLooper();
 
-  // prettier-ignore
-  const slidesInView = SlidesInView(
-    appRef.owner.root,
-    appRef.slides
-  );
-  slidesInView.init();
+    translate = Translate(appRef.axis);
 
-  // prettier-ignore
-  const renderer = SlidesRenderer(
-    appRef.owner.document,
-    appRef.owner.container,
-    appRef.axis,
-    appRef.layout.metrics()
-  );
+    slidesVisibilityTracker = createVisibilityTracker(
+      appRef.owner.root,
+      appRef.slides.map((s) => s.nativeElement)
+    );
+    slidesVisibilityTracker.init();
 
-  writeVariables(appRef.owner.root, appRef.layout.metrics());
-  renderer.appendSlides(appRef.slides);
+    renderer = SlidesRenderer(
+      appRef.owner.document,
+      appRef.owner.container,
+      appRef.axis,
+      appRef.layout
+    );
+    renderer.appendSlides(appRef.slides);
 
-  const translate = Translate(appRef.axis);
+    writeVariables(appRef.owner.root, appRef.layout);
+
+    const disposables = createDisposableStore();
+    disposables.push(DisposableStoreId.Static, slidesVisibilityTracker.destroy);
+
+    return () => disposables.flushAll();
+  };
 
   const lerp: AppProcessorFunction = (app, timeParams) => {
     const motion = app.motion;
@@ -57,25 +59,25 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     return app;
   };
 
-  const loop: AppProcessorFunction = (app, _timeParams) => {
-    scrollLooper.loop();
-    if (slidesLooper.loop()) {
+  const syncOffset: AppProcessorFunction = (app, _timeParams) => {
+    if (loopScroll(app)) {
+      loopSlides(app);
       renderer.syncOffset(app.slides);
     }
+
     return app;
   };
 
   const syncVisibility: AppProcessorFunction = (app: AppRef, _timeParams) => {
-    const records = slidesInView.takeRecords();
+    const records = slidesVisibilityTracker.takeRecords();
 
-    for (let i = 0; i < records.length; i++) {
-      switch (records[i]) {
-        case -1:
-          renderer.fadeOut(app.slides[i], app.motion);
+    for (const record of records) {
+      switch (record.change) {
+        case VisibilityChange.Exited:
+          renderer.fadeOut(app.slides[record.index], app.motion);
           break;
-
-        case 1:
-          renderer.fadeIn(app.slides[i], app.motion);
+        case VisibilityChange.Entered:
+          renderer.fadeIn(app.slides[record.index], app.motion);
           break;
       }
     }
@@ -89,9 +91,14 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
   };
 
   return {
-    init: () => noop,
+    init,
     logic: {
-      [Phases.Render]: [lerp, loop, appProcessorThrottled(syncVisibility, 300), applyTranslation],
+      [Phases.Render]: [
+        lerp,
+        syncOffset,
+        appProcessorThrottled(syncVisibility, 160),
+        applyTranslation,
+      ],
     },
   };
 };

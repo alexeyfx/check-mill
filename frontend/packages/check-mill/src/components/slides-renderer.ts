@@ -1,8 +1,8 @@
 import { type AxisType } from "./axis";
 import { CheckboxFactory } from "./dom-factories";
-import { type LayoutMetrics } from "./layout";
+import { type LayoutProperties } from "./layout";
 import { type ScrollMotionType } from "./scroll-motion";
-import { type SlideType, type SlidesCollectionType } from "./slides";
+import { type SlidesCollectionType, type SlideType } from "./slides";
 import { Translate } from "./translate";
 
 export interface SlidesRendererType {
@@ -16,7 +16,7 @@ export function SlidesRenderer(
   ownerDocument: Document,
   root: HTMLElement,
   axis: AxisType,
-  metrics: LayoutMetrics
+  layout: Readonly<LayoutProperties>
 ): SlidesRendererType {
   /**
    * Translation helper for applying transform along the configured axis.
@@ -33,7 +33,7 @@ export function SlidesRenderer(
    * The maximum translation range per slide based on layout metrics.
    * Used to scale each slide’s `viewportOffset` into pixels.
    */
-  const slideTranslateRange = metrics.contentHeight - metrics.containerGap;
+  const slideTranslateRange = layout.contentArea.height - layout.slideSpacing;
 
   precomputeCheckboxRowFragments();
 
@@ -51,14 +51,13 @@ export function SlidesRenderer(
    * Each fragment contains one row of checkboxes positioned on the grid.
    */
   function precomputeCheckboxRowFragments(): void {
-    const { columns, rows, checkboxSize, gridGap } = metrics;
-    const cellSize = checkboxSize + gridGap;
+    const cellSize = layout.checkboxSize + layout.gridSpacing;
     const checkboxFactory = new CheckboxFactory(ownerDocument);
 
-    for (let x = 0, y = 0, row = 0; row < rows; x = 0, y += cellSize, row += 1) {
+    for (let x = 0, y = 0, row = 0; row < layout.grid.rows; x = 0, y += cellSize, row += 1) {
       const fragment = ownerDocument.createDocumentFragment();
 
-      for (let col = 0; col < columns; col += 1, x += cellSize) {
+      for (let col = 0; col < layout.grid.columns; col += 1, x += cellSize) {
         fragment.append(checkboxFactory.create(x, y));
       }
 

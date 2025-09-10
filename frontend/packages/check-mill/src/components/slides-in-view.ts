@@ -1,69 +1,109 @@
 import { DisposableStoreId, createDisposableStore } from "../core";
 import { type Component } from "./component";
-import { type SlidesCollectionType } from "./slides";
 
-export interface SlidesInViewType extends Component {
-  takeRecords(): number[];
+/**
+ * Describes the visibility state of an element.
+ */
+export const enum VisibilityState {
+  Hidden = 1,
+  Visible = 2,
 }
 
 /**
- * Creates a tracker that determines whether slides are currently visible within the viewport.
- *
- * @param slides - Array of slide objects containing layout and index information.
- * @returns {SlideInViewType}
+ * Describes the change in an element's visibility since the last frame.
  */
-export function SlidesInView(root: HTMLElement, slides: SlidesCollectionType): SlidesInViewType {
-  const lastRecords = new Uint8Array(slides.length).fill(1);
+export const enum VisibilityChange {
+  Exited = -1,
+  NoChange = 0,
+  Entered = 1,
+}
 
-  const currentRecords = new Uint8Array(slides.length).fill(1);
-
+/**
+ * A record describing a change in a single element's visibility.
+ */
+export type VisibilityRecord = {
   /**
-   * Disposable store for managing cleanup functions.
+   * The index of the element in the original tracked array.
    */
+  index: number;
+  /**
+   * The type of change that occurred.
+   */
+  change: VisibilityChange.Entered | VisibilityChange.Exited;
+};
+
+/**
+ * The public interface for the visibility tracker component.
+ */
+export interface VisibilityTrackerType extends Component {
+  /**
+   * Consumes and returns only the visibility changes that have occurred
+   * since the last time this function was called.
+   */
+  takeRecords(): VisibilityRecord[];
+}
+
+/**
+ * Creates a generic tracker that determines whether a collection of elements
+ * is currently visible within a given root container.
+ *
+ * @param root The scrolling container or viewport element.
+ * @param elementsToTrack The array of HTML elements to observe.
+ * @returns A VisibilityTrackerType instance.
+ */
+export function createVisibilityTracker(
+  root: HTMLElement,
+  elementsToTrack: HTMLElement[]
+): VisibilityTrackerType {
+  const elementCount = elementsToTrack.length;
+  const lastRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
+  const currentRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
   const disposables = createDisposableStore();
 
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
   function init(): void {
     const observer = new IntersectionObserver(handleIntersection, {
       root,
-      rootMargin: "0px",
       threshold: 0,
     });
 
-    for (const { nativeElement, realIndex } of slides) {
-      nativeElement.setAttribute("data-v-id", realIndex.toString());
-      observer.observe(nativeElement);
+    for (let i = 0; i < elementCount; i++) {
+      const element = elementsToTrack[i];
+      element.setAttribute("data-visibility-index", i.toString());
+      observer.observe(element);
     }
 
     disposables.push(DisposableStoreId.Static, observer.disconnect);
   }
 
-  /**
-   * @internal
-   * Component lifecycle method.
-   */
   function destroy(): void {
     disposables.flushAll();
   }
 
-  function takeRecords(): number[] {
-    const diff = new Array(lastRecords.length);
+  function takeRecords(): VisibilityRecord[] {
+    const changedRecords: VisibilityRecord[] = [];
 
-    for (let i = 0; i < lastRecords.length; i += 1) {
-      diff[i] = currentRecords[i] - lastRecords[i];
+    for (let i = 0; i < elementCount; i++) {
+      const diff = currentRecords[i] - lastRecords[i];
+
+      if (diff === VisibilityChange.Entered || diff === VisibilityChange.Exited) {
+        changedRecords.push({
+          index: i,
+          change: diff,
+        });
+      }
     }
 
     lastRecords.set(currentRecords);
-
-    return diff;
+    return changedRecords;
   }
 
   function handleIntersection(entries: IntersectionObserverEntry[]): void {
     for (const { target, isIntersecting } of entries) {
-      currentRecords[+target.getAttribute("data-v-id")!] = +isIntersecting + 1;
+      const index = parseInt(target.getAttribute("data-visibility-index")!, 10);
+
+      if (!isNaN(index)) {
+        currentRecords[index] = isIntersecting ? VisibilityState.Visible : VisibilityState.Hidden;
+      }
     }
   }
 

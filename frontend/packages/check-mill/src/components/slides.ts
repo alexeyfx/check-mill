@@ -1,5 +1,4 @@
 import { type SlideFactory } from "./dom-factories";
-import { type LayoutMetrics } from "./layout";
 
 export interface SlideType {
   readonly nativeElement: HTMLElement;
@@ -27,11 +26,11 @@ export function Slide(
   };
 }
 
-export function Slides(slideFactory: SlideFactory, metrics: LayoutMetrics): SlidesCollectionType {
-  const slides = new Array(metrics.totalSlides);
+export function Slides(slideFactory: SlideFactory, count: number): SlidesCollectionType {
+  const slides = new Array(count);
 
   let index = 0;
-  for (const slideElement of slideFactory.batch(metrics.totalSlides)) {
+  for (const slideElement of slideFactory.batch(count)) {
     slides[index] = Slide(slideElement, index, index, 0);
     index += 1;
   }
