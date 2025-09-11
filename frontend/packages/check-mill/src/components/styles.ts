@@ -7,7 +7,6 @@ const enum CSSVariables {
   SLIDE_WIDTH = "--slide-width",
   SLIDE_HEIGHT = "--slide-height",
   SLIDE_PADDING = "--slide-padding",
-  SLIDE_POINTER_EVENTS = "--slide-pointer-events",
   CONTAINER_GAP = "--container-gap",
   CONTAINER_PADDING = "--container-padding",
 }
@@ -30,12 +29,4 @@ export function writeVariables(root: HTMLElement, layout: Readonly<LayoutPropert
     CSSVariables.CONTAINER_PADDING,
     px([layout.containerPadding.vertical, layout.containerPadding.horizontal])
   );
-}
-
-export function disableSlidePointerEvents(root: HTMLElement): void {
-  root.style.setProperty(CSSVariables.SLIDE_POINTER_EVENTS, "none");
-}
-
-export function enableSlidePointerEvents(root: HTMLElement): void {
-  root.style.removeProperty(CSSVariables.SLIDE_POINTER_EVENTS);
 }

@@ -7,6 +7,9 @@
   gap: var(--container-gap);
   min-height: 100%;
   touch-action: none;
+  user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
 }
 
 .container::before {
@@ -23,7 +26,6 @@
   height: var(--slide-height);
   background: rgb(255, 255, 255);
   border-radius: 8px;
-  pointer-events: var(--slide-pointer-events, "auto");
 }
 
 ._int_slide__container {
@@ -46,4 +48,13 @@ input[type="checkbox"] {
   width: var(--checkbox-size);
   aspect-ratio: 1;
   transform: translateZ(0);
+}
+
+.is-dragging {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: grabbing;
+  -webkit-user-drag: none;
 }

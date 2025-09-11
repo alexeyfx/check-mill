@@ -1,3 +1,3 @@
 import "./styles.css";
 
-export * from "./check-mill";
+export { type CheckMillType, CheckMill } from "./check-mill";

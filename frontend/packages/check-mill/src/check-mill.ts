@@ -7,6 +7,7 @@ import {
   Viewport,
 } from "./components";
 import {
+  type Disposable,
   type PhasePredicate,
   type RenderLoopType,
   type TimeParams,
@@ -19,11 +20,13 @@ import {
 } from "./core";
 import { NetworkSystem, RenderSystem, ScrollSystem, UpdateSystem } from "./systems";
 
-export type CheckMillType = void;
+export type CheckMillType = {
+  destroy: Disposable;
+};
 
 export function CheckMill(root: HTMLElement, container: HTMLElement): Promise<CheckMillType> {
-  const _application = new Application(root, container);
-  return Promise.resolve();
+  const application = new Application(root, container);
+  return Promise.resolve(application);
 }
 
 /**
@@ -74,11 +77,10 @@ class Application {
     const ioPhase = Processor.phase<AppRef, TimeParams>(Phases.IO).runIf(isInteracted);
     const updatePhase = Processor.phase<AppRef, TimeParams>(Phases.Update);
     const renderPhase = Processor.phase<AppRef, TimeParams>(Phases.Render);
-    const cleanUpPhase = Processor.phase<AppRef, TimeParams>(Phases.Cleanup);
+    const cleanUpPhase = Processor.phase<AppRef, TimeParams>(Phases.Cleanup).add(
+      resetInteractionState
+    );
 
-    cleanUpPhase.add(resetInteractionState);
-
-    // prettier-ignore
     const systems = [
       NetworkSystem(this.appRef),
       ScrollSystem(this.appRef),
@@ -96,14 +98,15 @@ class Application {
     }
 
     // prettier-ignore
-    this.readExecutor = Processor
-      .merge([ioPhase, updatePhase].map(p => p.runner()))
-      .executor();
+    {
+      this.readExecutor = Processor
+        .merge([ioPhase, updatePhase].map(p => p.runner()))
+        .executor();
 
-    // prettier-ignore
-    this.writeExecutor = Processor
-      .merge([renderPhase, cleanUpPhase].map(p => p.runner()))
-      .executor();
+      this.writeExecutor = Processor
+        .merge([renderPhase, cleanUpPhase].map(p => p.runner()))
+        .executor();
+    }
   }
 
   /**
