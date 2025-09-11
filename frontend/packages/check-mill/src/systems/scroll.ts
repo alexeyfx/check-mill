@@ -7,8 +7,6 @@ import {
   Phases,
   Drag,
   Wheel,
-  disableSlidePointerEvents,
-  enableSlidePointerEvents,
 } from "../components";
 import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type AppSystem } from "./system";
@@ -16,12 +14,12 @@ import { type AppSystem } from "./system";
 export const ScrollSystem: AppSystem = (appRef: AppRef) => {
   const init = (): Disposable => {
     const drag = Drag(appRef.owner.root, appRef.axis);
-    drag.register((event) => handleDragScroll(appRef, event));
-
     const wheel = Wheel(appRef.owner.root, appRef.axis);
+    const disposables = createDisposableStore();
+
+    drag.register((event) => handleDragScroll(appRef, event));
     wheel.register((event) => handleWheelScroll(appRef, event));
 
-    const disposables = createDisposableStore();
     disposables.push(DisposableStoreId.Static, drag.init(), wheel.init());
 
     return () => disposables.flushAll();
@@ -54,15 +52,6 @@ const processWheelScroll: AppProcessorFunction = (app, _timeParams) => {
 };
 
 const handleDragScroll = (app: AppRef, event: GestureEvent): void => {
-  switch (event.state) {
-    case GestureState.Initialize:
-      disableSlidePointerEvents(app.owner.root);
-      break;
-    case GestureState.Finalize:
-      enableSlidePointerEvents(app.owner.root);
-      break;
-  }
-
   app.dragEvents.push(event);
   app.dirtyFlags.set(AppDirtyFlags.Interacted);
 };

@@ -17,41 +17,47 @@ import {
 } from "./gesture";
 
 /**
- * If the user stops dragging for this duration while keeping the pointer down,
- * the base coordinate and time will be updated.
+ * If the user pauses their drag for more than this duration (in ms), the
+ * "flick" calculation resets. This prevents a slow drag from being
+ * misinterpreted as a high-velocity flick at the end.
  */
 const LOG_INTERVAL = 170;
+
+/**
+ * The minimum distance (in px) the pointer must move before a "drag" is
+ * officially considered to have started. This helps distinguish a drag
+ * from an accidental click.
+ */
+const DRAG_THRESHOLD = 5;
 
 export interface DragType extends Component, Gesture {}
 
 /**
- * Drag component handles pointer-based dragging logic.
- * It tracks pointer events to support dragging along a single axis.
+ * Creates a Drag gesture component that handles pointer-based dragging logic.
+ * It tracks pointer events, manages browser default actions, calculates velocity
+ * for flicks, and emits a clean stream of gesture events.
+ *
+ * @param root The HTML element to which the drag listeners will be attached.
+ * @param axis The axis ('x' or 'y') along which to measure drag movement.
+ * @returns An object conforming to the DragType interface.
  */
 export function Drag(root: HTMLElement, axis: AxisType): DragType {
-  /**
-   * First recorded pointer event in the drag interaction.
-   */
+  /** First recorded pointer event in the drag interaction. */
   let startEvent: PointerEvent;
 
-  /**
-   * Most recent pointer event.
-   */
+  /** Most recent pointer event. */
   let lastEvent: PointerEvent;
 
-  /**
-   * Prevents click events after drag, to avoid accidental activation.
-   */
+  /** Prevents click events after drag, to avoid accidental activation. */
   let preventClick: boolean = false;
 
-  /**
-   * Disposable store for managing cleanup functions.
-   */
+  /** The document that owns the root element, used for global event listeners. */
+  const ownerDocument = root.ownerDocument;
+
+  /** Disposable store for managing cleanup functions. */
   const disposables = createDisposableStore();
 
-  /**
-   * Returns a reader for the drag event stream.
-   */
+  /** Returns a reader for the drag event stream. */
   const dragged = new TypedEvent<GestureEvent>();
 
   /**
@@ -63,7 +69,7 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
       DisposableStoreId.Static,
       dragged.clear,
       event(root, "pointerdown", onPointerDown),
-      event(root, "click", onMouseClick)
+      event(root, "click", onMouseClick, { capture: true })
     );
 
     return () => disposables.flushAll();
@@ -73,11 +79,15 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Handles pointer down event.
    */
   function onPointerDown(event: PointerEvent): void {
-    const gEvent = gestureEvent(GestureType.Drag, GestureState.Initialize, 0);
+    prevent(event, true);
 
     lastEvent = event;
     startEvent = event;
-    preventClick = event.buttons === 0;
+    preventClick = false;
+    const gEvent = gestureEvent(GestureType.Drag, GestureState.Initialize, 0 /* delta */);
+
+    ownerDocument.body.classList.add("is-dragging");
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
 
     dragged.emit(gEvent);
     addDragEvents();
@@ -87,9 +97,15 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
    * Handles pointer move event.
    */
   function onPointerMove(event: PointerEvent): void {
+    prevent(event, true);
+
     const diff = diffCoord(event);
     const expired = diffTime(event) > LOG_INTERVAL;
     const gEvent = gestureEvent(GestureType.Drag, GestureState.Update, axis.direction(diff));
+
+    if (diff > DRAG_THRESHOLD) {
+      preventClick = true;
+    }
 
     lastEvent = event;
     if (expired) {
@@ -97,7 +113,6 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
     }
 
     dragged.emit(gEvent);
-    prevent(event, true);
   }
 
   /**
@@ -106,6 +121,9 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   function onPointerUp(event: PointerEvent): void {
     const acceleration = computeAcceleration(event);
     const gEvent = gestureEvent(GestureType.Drag, GestureState.Finalize, 10 * acceleration);
+
+    ownerDocument.body.classList.remove("is-dragging");
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
 
     dragged.emit(gEvent);
     disposables.flush(DisposableStoreId.Temporal);
@@ -118,10 +136,12 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
   function onMouseClick(event: MouseEvent): void {
     if (preventClick) {
       prevent(event, true);
-      preventClick = false;
     }
   }
 
+  /**
+   * Adds temporary, document-level listeners for an active drag.
+   */
   function addDragEvents(): void {
     disposables.push(
       DisposableStoreId.Temporal,
@@ -133,6 +153,9 @@ export function Drag(root: HTMLElement, axis: AxisType): DragType {
     );
   }
 
+  /**
+   * Calculates the final velocity (acceleration) for a flick gesture.
+   */
   function computeAcceleration(event: PointerEvent): number {
     if (!startEvent || !lastEvent) {
       return 0;
