@@ -17,7 +17,7 @@ export function loopScroll(appRef: AppRef): boolean {
   const jointSafety = 0.1;
   const maxBound = jointSafety;
   const minBound =
-    layout.slide.height + layout.slideSpacing - layout.contentArea.height + jointSafety;
+    layout.viewportRect.height - layout.slideSpacing - layout.contentArea.height + jointSafety;
 
   const bounds = { min: minBound, max: maxBound };
   const needsToLoop = shouldLoop(motion, bounds);

@@ -177,7 +177,7 @@ export function computeLayout(config: LayoutConfig): ComputedLayout {
     (gridColumns - 1) * config.gridSpacing +
     config.slidePadding.horizontal * 2;
 
-  const slidesInViewCount = Math.floor(config.viewportRect.height / finalSlideHeight);
+  const slidesInViewCount = Math.ceil(config.viewportRect.height / finalSlideHeight);
 
   const bufferCount = slidesInViewCount * config.loopBufferSizeRatio;
 

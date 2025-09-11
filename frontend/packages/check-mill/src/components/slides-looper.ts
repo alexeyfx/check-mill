@@ -47,14 +47,24 @@ export function createSlidesLooper() {
     const viewportHeight = layout.viewportRect.height;
 
     let desiredOperation = LoopOperation.None;
+
     if (leftEdge > 0) {
       desiredOperation = LoopOperation.ShiftRight;
     } else if (rightEdge < viewportHeight) {
       desiredOperation = LoopOperation.ShiftLeft;
     }
 
-    if (desiredOperation !== lastLoopOperation) {
-      applyShift(slides, desiredOperation, layout.slideCount.buffer);
+    if (
+      desiredOperation !== lastLoopOperation &&
+      (desiredOperation !== LoopOperation.None || lastLoopOperation !== LoopOperation.None)
+    ) {
+      // prettier-ignore
+      applyShift(
+        slides,
+        desiredOperation,
+        layout.slideCount.inView,
+        layout.slideCount.buffer
+      );
     }
 
     lastLoopOperation = desiredOperation;
@@ -68,15 +78,14 @@ export function createSlidesLooper() {
 function applyShift(
   slides: SlidesCollectionType,
   operation: LoopOperation,
-  totalSlides: number
+  shiftLength: number,
+  bufferLength: number
 ): void {
-  const shiftLength = Math.ceil(totalSlides / 3); // Example value
-
   switch (operation) {
     case LoopOperation.ShiftRight:
       slides.forEach((slide, index) => {
         if (index >= slides.length - shiftLength) {
-          slide.virtualIndex -= totalSlides;
+          slide.virtualIndex -= bufferLength;
           slide.viewportOffset = -1;
           return;
         }
@@ -88,7 +97,7 @@ function applyShift(
     case LoopOperation.ShiftLeft:
       slides.forEach((slide, index) => {
         if (index < shiftLength) {
-          slide.virtualIndex += totalSlides;
+          slide.virtualIndex += bufferLength - 1;
           slide.viewportOffset = 1;
           return;
         }
@@ -105,13 +114,7 @@ function applyShift(
 /**
  * Returns a new slide object in its default, non-shifted state.
  */
-function resetSlide(slide: SlideType): SlideType {
-  if (slide.virtualIndex === slide.realIndex && slide.viewportOffset === 0) {
-    return slide;
-  }
-  return {
-    ...slide,
-    virtualIndex: slide.realIndex,
-    viewportOffset: 0,
-  };
+function resetSlide(slide: SlideType): void {
+  slide.virtualIndex = slide.realIndex;
+  slide.viewportOffset = 0;
 }

@@ -8,24 +8,23 @@ import {
   appProcessorThrottled,
   createSlidesLooper,
   createVisibilityTracker,
-  loopScroll,
   writeVariables,
   TranslateType,
   VisibilityTrackerType,
   SlidesRendererType,
 } from "../components";
+import { createTeleport } from "../components/teleport";
 import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type AppSystem } from "./system";
 
 export const RenderSystem: AppSystem = (appRef: AppRef) => {
   let renderer: SlidesRendererType;
   let translate: TranslateType;
-  let loopSlides: (appRef: AppRef) => void;
   let slidesVisibilityTracker: VisibilityTrackerType;
 
-  const init = (): Disposable => {
-    loopSlides = createSlidesLooper();
+  const teleport = createTeleport();
 
+  const init = (): Disposable => {
     translate = Translate(appRef.axis);
 
     slidesVisibilityTracker = createVisibilityTracker(
@@ -59,10 +58,8 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
   };
 
   const syncOffset: AppProcessorFunction = (app, _timeParams) => {
-    if (loopScroll(app)) {
-      loopSlides(app);
-      renderer.syncOffset(app.slides);
-    }
+    teleport(appRef);
+    renderer.syncOffset(app.slides);
 
     return app;
   };
