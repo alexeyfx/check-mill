@@ -1,4 +1,4 @@
-import { type AppProcessorFunction, Phases } from "../components";
+import { type AppProcessorFunction, Phases, loop } from "../components";
 import { noop } from "../core";
 import { type AppSystem } from "./system";
 
@@ -6,12 +6,17 @@ export const UpdateSystem: AppSystem = () => {
   return {
     init: () => noop,
     logic: {
-      [Phases.Update]: [processUpdate],
+      [Phases.Update]: [processMotion, processLoop],
     },
   };
 };
 
-const processUpdate: AppProcessorFunction = (app, timeParams) => {
+const processLoop: AppProcessorFunction = (appRef) => {
+  loop(appRef);
+  return appRef;
+};
+
+const processMotion: AppProcessorFunction = (app, timeParams) => {
   const motion = app.motion;
   const integrated = applyFriction(motion.velocity, 0.75, timeParams.dt);
   const displacement = motion.current + integrated - motion.previous;

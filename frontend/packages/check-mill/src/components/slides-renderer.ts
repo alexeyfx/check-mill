@@ -1,14 +1,14 @@
 import { type AxisType } from "./axis";
 import { CheckboxFactory } from "./dom-factories";
 import { type LayoutProperties } from "./layout";
-import { type ScrollMotionType } from "./scroll-motion";
+import { type MotionType } from "./scroll-motion";
 import { type SlidesCollectionType, type SlideType } from "./slides";
 import { Translate } from "./translate";
 
 export interface SlidesRendererType {
   appendSlides(slides: SlidesCollectionType): void;
-  fadeIn(slide: SlideType, motion: ScrollMotionType): void;
-  fadeOut(slide: SlideType, motion: ScrollMotionType): void;
+  fadeIn(slide: SlideType, motion: MotionType): void;
+  fadeOut(slide: SlideType, motion: MotionType): void;
   syncOffset(slides: SlidesCollectionType): void;
 }
 
@@ -86,7 +86,7 @@ export function SlidesRenderer(
    * Uses a single-frame task to perform the DOM cleanup via the sequencer
    * (keeps all DOM mutations serialized through the same pipeline).
    */
-  function fadeOut(slide: SlideType, _motion: ScrollMotionType): void {
+  function fadeOut(slide: SlideType, _motion: MotionType): void {
     const { nativeElement } = slide;
     const container = nativeElement.firstElementChild as HTMLElement;
 

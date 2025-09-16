@@ -3,13 +3,14 @@ import {
   type ProcessorFunction,
   type TimeParams,
   createFlagManager,
+  UintXBitSet,
 } from "../core";
 import { assert } from "../core";
 import { type AxisType, Axis } from "./axis";
 import { SlideFactory } from "./dom-factories";
 import { type GestureEvent } from "./gestures";
 import { type LayoutProperties, createLayout } from "./layout";
-import { type ScrollMotionType, ScrollMotion } from "./scroll-motion";
+import { type MotionType, Motion } from "./scroll-motion";
 import { type SlidesCollectionType, Slides } from "./slides";
 
 // prettier-ignore
@@ -34,9 +35,10 @@ export interface AppRef {
     container: HTMLElement;
   };
   axis: AxisType;
+  board: UintXBitSet;
   dirtyFlags: BitwiseFlags;
   layout: Readonly<LayoutProperties>;
-  motion: ScrollMotionType;
+  motion: MotionType;
   slides: SlidesCollectionType;
   dragEvents: GestureEvent[];
   wheelEvents: GestureEvent[];
@@ -109,7 +111,8 @@ export function App(root: HTMLElement, container: HTMLElement): AppRef {
     layout,
     slides,
     axis: Axis("y"),
-    motion: ScrollMotion(),
+    board: UintXBitSet.empty(16, 65_535),
+    motion: Motion(),
     dirtyFlags: createFlagManager(AppDirtyFlags.None),
     dragEvents: new Array<GestureEvent>(),
     wheelEvents: new Array<GestureEvent>(),
