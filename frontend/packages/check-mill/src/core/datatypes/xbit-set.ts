@@ -74,6 +74,13 @@ export class UintXBitSet {
   }
 
   /**
+   * Gets the total number of bits that the bitset can hold.
+   */
+  public get totalBits(): number {
+    return this.bytes.length * this.width;
+  }
+
+  /**
    * Creates an empty UintBitSet (all bits cleared) using the specified bit width.
    *
    * @param bitsPerElement - The bit width for each element (8, 16, or 32)
@@ -103,7 +110,7 @@ export class UintXBitSet {
         array.fill(0xff);
         break;
       case 16:
-        array.fill(0x10000);
+        array.fill(0xffff);
         break;
       case 32:
         array.fill(0xffffffff);
@@ -181,10 +188,10 @@ export class UintXBitSet {
         this.view.setUint8(byteOffset, value);
         break;
       case 16:
-        this.view.setUint16(byteOffset, value);
+        this.view.setUint16(byteOffset, value, true);
         break;
       case 32:
-        this.view.setUint32(byteOffset, value);
+        this.view.setUint32(byteOffset, value, true);
         break;
     }
   }
@@ -203,9 +210,30 @@ export class UintXBitSet {
       case 8:
         return this.view.getUint8(byteOffset);
       case 16:
-        return this.view.getUint16(byteOffset);
+        return this.view.getUint16(byteOffset, true);
       case 32:
-        return this.view.getUint32(byteOffset);
+        return this.view.getUint32(byteOffset, true);
+    }
+  }
+
+  /**
+   * Returns a paginated iterator over the bits in the set.
+   * This allows for efficient iteration over a specific chunk of the bitset without
+   * creating a large intermediate array.
+   *
+   * @param pageOffset - The starting bit index for the page.
+   * @param pageLength - The number of bits to include in the page.
+   *
+   * @returns An iterable iterator that yields a boolean for each bit in the page.
+   */
+  public *getPageIterator(pageOffset: number, pageLength: number): IterableIterator<boolean> {
+    // Calculate the end of the iteration, ensuring it doesn't exceed the total bits.
+    const endBit = Math.min(pageOffset + pageLength, this.totalBits);
+
+    // Iterate from the starting offset to the calculated end.
+    for (let i = pageOffset; i < endBit; i++) {
+      // Yield true if the bit is set, false otherwise.
+      yield this.has(i);
     }
   }
 }
