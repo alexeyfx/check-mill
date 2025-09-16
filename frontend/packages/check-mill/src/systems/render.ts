@@ -1,19 +1,17 @@
 import {
   type AppRef,
   type AppProcessorFunction,
+  type SlidesRendererType,
+  type TranslateType,
+  type VisibilityTrackerType,
   Phases,
   VisibilityChange,
   SlidesRenderer,
   Translate,
   appProcessorThrottled,
-  createSlidesLooper,
   createVisibilityTracker,
   writeVariables,
-  TranslateType,
-  VisibilityTrackerType,
-  SlidesRendererType,
 } from "../components";
-import { createTeleport } from "../components/teleport";
 import { type Disposable, DisposableStoreId, createDisposableStore } from "../core";
 import { type AppSystem } from "./system";
 
@@ -21,8 +19,6 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
   let renderer: SlidesRendererType;
   let translate: TranslateType;
   let slidesVisibilityTracker: VisibilityTrackerType;
-
-  const teleport = createTeleport();
 
   const init = (): Disposable => {
     translate = Translate(appRef.axis);
@@ -57,13 +53,6 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     return app;
   };
 
-  const syncOffset: AppProcessorFunction = (app, _timeParams) => {
-    teleport(appRef);
-    renderer.syncOffset(app.slides);
-
-    return app;
-  };
-
   const syncVisibility: AppProcessorFunction = (app: AppRef, _timeParams) => {
     const records = slidesVisibilityTracker.takeRecords();
 
@@ -81,6 +70,11 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
     return app;
   };
 
+  const syncOffset: AppProcessorFunction = (app, _timeParams) => {
+    renderer.syncOffset(app.slides);
+    return app;
+  };
+
   const applyTranslation: AppProcessorFunction = (app, _timeParams) => {
     translate.to(app.owner.container, app.motion.offset);
     return app;
@@ -92,8 +86,8 @@ export const RenderSystem: AppSystem = (appRef: AppRef) => {
       [Phases.Render]: [
         lerp,
         syncOffset,
-        appProcessorThrottled(syncVisibility, 160),
         applyTranslation,
+        appProcessorThrottled(syncVisibility, 160),
       ],
     },
   };

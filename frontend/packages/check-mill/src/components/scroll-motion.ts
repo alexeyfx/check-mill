@@ -1,4 +1,4 @@
-export interface ScrollMotionType {
+export interface MotionType {
   current: number;
   previous: number;
   offset: number;
@@ -8,14 +8,14 @@ export interface ScrollMotionType {
 }
 
 /**
- * A scroll motion state container.
+ * A motion state container.
  *
  * Manages multiple 1D vectors used in scroll calculations,
  * such as current position, target position, velocity, and more.
  *
- * @returns {ScrollMotionType} A ScrollMotionType instance .
+ * @returns {MotionType} A MotionType instance .
  */
-export function ScrollMotion(): ScrollMotionType {
+export function Motion(): MotionType {
   return {
     current: 0.0,
     previous: 0.0,
@@ -27,22 +27,23 @@ export function ScrollMotion(): ScrollMotionType {
 }
 
 /**
- * Apply a uniform delta to ScrollMotion.
+ * Apply a uniform delta to Motion.
  *
- * @param motion - ScrollMotion to advance.
+ * @param motion - Motion to advance.
  * @param delta - Amount to increment each value by.
  */
-export function move(motion: ScrollMotionType, delta: number): void {
+export function move(motion: MotionType, delta: number): void {
   motion.current += delta;
   motion.previous += delta;
   motion.offset += delta;
   motion.target += delta;
 }
 
-export function initial(motion: ScrollMotionType): void {
-  const ref = ScrollMotion();
+export function initial(motion: MotionType): void {
+  const ref = Motion();
+  
   for (const field in ref) {
-    const typedF = field as keyof ScrollMotionType;
+    const typedF = field as keyof MotionType;
     motion[typedF] = ref[typedF];
   }
 }
