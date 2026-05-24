@@ -1,3 +1,5 @@
+import { OneOrMany } from "./types";
+
 /**
  * Applies an action to each item in the list and clears the list in-place.
  *
@@ -19,6 +21,6 @@ export function flush<T>(items: T[], action: (item: T) => void): void {
  *
  * @return An array containing the value, or the value itself if it is already an array.
  */
-export function toArray<T>(value: T | T[]): T[] {
+export function toArray<T>(value: OneOrMany<T>): T[] {
   return Array.isArray(value) ? value : [value];
 }

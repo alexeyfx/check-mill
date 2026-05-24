@@ -1,5 +1,4 @@
 ._int_root {
-  contain: strict;
   position: relative;
   display: block;
   width: 100%;
@@ -11,6 +10,21 @@
   -webkit-user-select: none;
   -webkit-user-drag: none;
   overflow: hidden;
+}
+
+._int_scroller {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(0);
+  overflow: auto;
+  will-change: scroll-position;
+  z-index: 1;
+}
+
+._int_slides {
+  position: absolute;
+  inset: 0;
+  contain: content;
 }
 
 ._int_slide {
@@ -59,9 +73,4 @@ input[type="checkbox"] {
   }
 
   pointer-events: auto;
-}
-
-.is-scrolling * {
-  pointer-events: none !important;
-  cursor: grabbing;
 }

@@ -1,13 +1,6 @@
 import { Channel, Socket } from "phoenix";
 
-import {
-  createDisposableStore,
-  DisposableStoreId,
-  EventReader,
-  isDev,
-  TypedEvent,
-  type Disposable,
-} from "../core";
+import { DisposableStore, EventReader, isDev, TypedEvent, type Disposable } from "../core";
 import type { Component } from "./component";
 
 export type PatchBatch = { seq: number; patches: [number, number][] };
@@ -15,7 +8,7 @@ export type GlobalSnapshotBegin = { chunks: number };
 export type GlobalSnapshotChunk = { i: number; b64: string };
 export type WindowSnapshot = { pos: number; bits_b64: string };
 
-export interface GatewayType extends Component {
+export interface Transport extends Component {
   readonly patchBatch: EventReader<PatchBatch>;
   readonly snapshotBegin: EventReader<GlobalSnapshotBegin>;
   readonly snapshotChunk: EventReader<GlobalSnapshotChunk>;
@@ -27,7 +20,7 @@ export interface GatewayType extends Component {
   sendToggleMany(idxs: number[]): void;
 }
 
-export function createGateway(url: string): GatewayType {
+export function createTransport(url: string): Transport {
   const patchBatch = new TypedEvent<PatchBatch>();
 
   const snapshotBegin = new TypedEvent<GlobalSnapshotBegin>();
@@ -59,9 +52,8 @@ export function createGateway(url: string): GatewayType {
       .receive("ok", (resp) => isDev && console.log("Joined successfully", resp))
       .receive("error", (resp) => isDev && console.log("Unable to join", resp));
 
-    const disposables = createDisposableStore();
+    const disposables = new DisposableStore();
     disposables.push(
-      DisposableStoreId.Static,
       () => {
         socket.disconnect();
         channel?.leave();
@@ -70,7 +62,7 @@ export function createGateway(url: string): GatewayType {
       ...events.map((event) => event.clear),
     );
 
-    return disposables.flushAll;
+    return () => disposables.flushAll();
   }
 
   function sendCursor(pos: number): void {

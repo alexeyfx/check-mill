@@ -1,22 +1,33 @@
-import type { AppRef, AppSystemInstance } from "../components";
-import { Phases, loop } from "../components";
+import type { AppRef, AppSystemInstance, MotionType } from "../components";
+import { Phases, TrackRecycler } from "../components";
+import { VisibilityTracker } from "../components";
 import type { LoopParams } from "../core";
-import { noop } from "../core";
 
 const FRICTION = 0.92;
 
-export function UpdateSystem(_appRef: AppRef): AppSystemInstance {
+export function UpdateSystem(appRef: AppRef): AppSystemInstance {
+  const { state } = appRef;
+
+  const trackRecycler = new TrackRecycler();
+  const visibilityTracker = new VisibilityTracker(state.motion.slides);
+
   return {
-    init: () => noop,
+    init: () => () => visibilityTracker.reset(),
     logic: {
-      [Phases.Update]: [processInertia, loop],
+      [Phases.Update]: [
+        (params) => processInertia(state.motion.track, params),
+        () => trackRecycler.update(state.motion.track, state.layout.current, state.motion.slides),
+        () =>
+          visibilityTracker.executeIntersectionPass(
+            state.motion.track,
+            state.layout.current.computed,
+          ),
+      ],
     },
   };
 }
 
-function processInertia(app: AppRef, params: LoopParams): void {
-  const motion = app.view.motion;
-
+function processInertia(motion: MotionType, params: LoopParams): void {
   motion.velocity *= Math.pow(FRICTION, params.dt / 16.67);
 
   if (Math.abs(motion.velocity) < 1) {

@@ -1,44 +1,35 @@
-import {
-  type Disposable,
-  type EventReader,
-  DisposableStoreId,
-  TypedEvent,
-  createDisposableStore,
-} from "../core";
-import { type Component } from "./component";
+import { type Disposable, DisposableStore, TypedEvent } from "../core";
 
-export interface ViewportType extends Component {
-  resized: EventReader<DOMRect>;
-  measure(): DOMRect;
-}
+export class Viewport {
+  private memoRect: DOMRect;
 
-export function createViewport(root: HTMLElement): ViewportType {
-  let memoRect: DOMRect = root.getBoundingClientRect();
+  private readonly disposables = new DisposableStore();
 
-  const resized = new TypedEvent<DOMRect>();
+  private readonly resizeObserver = new ResizeObserver(() => this.handleResize());
 
-  function init(): Disposable {
-    const resizeObserver = new ResizeObserver(onResize);
-    resizeObserver.observe(root);
+  public readonly resized = new TypedEvent<DOMRect>();
 
-    const disposables = createDisposableStore();
-    disposables.push(DisposableStoreId.Static, resized.clear, () => resizeObserver.disconnect());
-
-    return () => disposables.flushAll();
+  constructor(private readonly root: HTMLElement) {
+    this.memoRect = this.root.getBoundingClientRect();
   }
 
-  function measure(): DOMRect {
-    return memoRect;
+  public init(): Disposable {
+    this.resizeObserver.observe(this.root);
+
+    this.disposables.push(
+      () => this.resized.clear(),
+      () => this.resizeObserver.disconnect(),
+    );
+
+    return () => this.disposables.flushAll();
   }
 
-  function onResize(): void {
-    memoRect = root.getBoundingClientRect();
-    resized.emit(memoRect);
+  public measure(): DOMRect {
+    return this.memoRect;
   }
 
-  return {
-    init,
-    measure,
-    resized,
-  };
+  private handleResize(): void {
+    this.memoRect = this.root.getBoundingClientRect();
+    this.resized.emit(this.memoRect);
+  }
 }

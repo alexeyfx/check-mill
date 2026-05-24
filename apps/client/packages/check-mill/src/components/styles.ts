@@ -1,5 +1,5 @@
 import { px } from "../core";
-import { LayoutProperties } from "./layout";
+import { LayoutContext } from "./layout";
 
 const enum CSSVariables {
   CHECKBOX_SIZE = "--checkbox-size",
@@ -11,22 +11,22 @@ const enum CSSVariables {
   CONTAINER_PADDING = "--container-padding",
 }
 
-export function writeVariables(root: HTMLElement, layout: Readonly<LayoutProperties>): void {
+export function writeVariables(root: HTMLElement, layout: Readonly<LayoutContext>): void {
   const { style } = root;
 
   root.removeAttribute("style");
 
-  style.setProperty(CSSVariables.CHECKBOX_SIZE, px(layout.checkboxSize));
-  style.setProperty(CSSVariables.GRID_GAP, px(layout.gridSpacing));
+  style.setProperty(CSSVariables.CHECKBOX_SIZE, px(layout.config.checkboxSize));
+  style.setProperty(CSSVariables.GRID_GAP, px(layout.config.gridSpacing));
   style.setProperty(
     CSSVariables.SLIDE_PADDING,
-    px([layout.slidePadding.vertical, layout.slidePadding.horizontal])
+    px([layout.config.slidePadding.vertical, layout.config.slidePadding.horizontal]),
   );
-  style.setProperty(CSSVariables.SLIDE_WIDTH, px(layout.slide.width));
-  style.setProperty(CSSVariables.SLIDE_HEIGHT, px(layout.slide.height));
-  style.setProperty(CSSVariables.CONTAINER_GAP, px(layout.slideSpacing));
+  style.setProperty(CSSVariables.SLIDE_WIDTH, px(layout.computed.slide.width));
+  style.setProperty(CSSVariables.SLIDE_HEIGHT, px(layout.computed.slide.height));
+  style.setProperty(CSSVariables.CONTAINER_GAP, px(layout.config.slideSpacing));
   style.setProperty(
     CSSVariables.CONTAINER_PADDING,
-    px([layout.containerPadding.vertical, layout.containerPadding.horizontal])
+    px([layout.config.containerPadding.vertical, layout.config.containerPadding.horizontal]),
   );
 }

@@ -6,7 +6,7 @@
 </script>
 
 <div class="content">
-	<CheckMillRenderer />
+	<CheckMillRenderer endpointUrl="http://localhost:4000/view" />
 	<AppBar />
 </div>
 <Dialogs />

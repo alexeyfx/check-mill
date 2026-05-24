@@ -5,24 +5,22 @@ import type {
   LoopParams,
   RenderLoopType,
 } from "../core";
-import { assert, createFlagManager, BitSet, noop } from "../core";
+import { assert, createFlagManager, BitSet } from "../core";
 import { SlideFactory } from "./dom-factories";
-import type { LayoutProperties } from "./layout";
-import { createLayout } from "./layout";
-import type { LoopState } from "./looper";
-import { initialLoopState } from "./looper";
-import { createGateway, GatewayType } from "./gateway";
+import type { LayoutContext } from "./layout";
+import { LayoutCalculator } from "./layout";
+import type { Transport, WindowSnapshot } from "./transport";
 import type { MotionType } from "./scroll-motion";
 import { createMotion } from "./scroll-motion";
-import type { SlidesCollectionType } from "./slides";
+import type { Slide, SlidesCollectionType } from "./slides";
 import { createSlides } from "./slides";
-import { createViewport, ViewportType } from "./viewport";
-import { createVisibilityTracker, VisibilityTrackerType } from "./visibility-tracker";
+import { Viewport } from "./viewport";
+import { VisibilityTracker } from "./visibility-tracker";
+import { writeVariables } from "./styles";
 
 // prettier-ignore
 export const enum AppDirtyFlags {
   None             = 0,
-  GestureRunning   = 1 << 0,
   FrameNeedsRedraw = 1 << 1,
 }
 
@@ -33,45 +31,68 @@ export const enum Phases {
   Cleanup,
 }
 
-/**
- * ViewLayout represents the ephemeral, layout-dependent state.
- */
-export type ViewLayout = {
-  readonly layout: LayoutProperties;
-  readonly slides: SlidesCollectionType;
-  readonly loopState: LoopState;
-  readonly motion: MotionType;
-  readonly dirtyFlags: BitwiseFlags;
-  readonly slidesVisibilityTracker: VisibilityTrackerType;
-};
+export interface AppHostContext {
+  readonly window: Window;
+  readonly document: Document;
+  readonly rootElement: HTMLElement;
+  readonly transport: Transport;
+}
 
-/**
- * AppRef is the persistent state container.
- */
-export type AppRef = {
-  readonly owner: {
-    window: Window;
-    document: Document;
-    root: HTMLElement;
+export interface LayoutDomain {
+  readonly current: LayoutContext;
+  readonly viewport: Viewport;
+}
+
+export interface MotionDomain {
+  readonly track: MotionType;
+  readonly slides: SlidesCollectionType;
+  readonly visibility: VisibilityTracker<Slide>;
+}
+
+export interface FrameSyncBuffer {
+  readonly inbound: {
+    readonly patches: [index: number, state: number][];
+    readonly windowSnapshots: WindowSnapshot[];
+    readonly stream: {
+      isDone: boolean;
+      expectedChunks: number;
+      readonly chunks: Uint8Array[];
+    };
+    resize: DOMRect | null;
   };
 
-  readonly board: BitSet;
-  readonly gateway: GatewayType;
-  readonly viewport: ViewportType;
+  readonly outbound: {
+    cursorPosition: number;
+    readonly pendingToggles: number[];
+    readonly pendingBatchToggles: number[];
+  };
+}
 
-  view: ViewLayout;
-  renderLoop: RenderLoopType | null;
-  readExecutor: AppProcessoFunction;
-  writeExecutor: AppProcessoFunction;
-};
+export interface SimulationState {
+  readonly layout: LayoutDomain;
+  readonly motion: MotionDomain;
+  readonly selectionBoard: BitSet;
+  readonly syncBuffer: FrameSyncBuffer;
+  dirtyFlags: BitwiseFlags;
+}
 
-export type AppProcessoFunction = ProcessorFunction<AppRef, LoopParams>;
+export interface EngineRuntime {
+  loop: RenderLoopType | null;
+}
+
+export interface AppRef {
+  readonly host: AppHostContext;
+  readonly state: SimulationState;
+  readonly engine: EngineRuntime;
+}
+
+export type AppProcessorFunction = ProcessorFunction<LoopParams>;
 
 export type PhasePipeline = {
-  [Phases.IO]: AppProcessoFunction[];
-  [Phases.Update]: AppProcessoFunction[];
-  [Phases.Render]: AppProcessoFunction[];
-  [Phases.Cleanup]: AppProcessoFunction[];
+  [Phases.IO]: AppProcessorFunction[];
+  [Phases.Update]: AppProcessorFunction[];
+  [Phases.Render]: AppProcessorFunction[];
+  [Phases.Cleanup]: AppProcessorFunction[];
 };
 
 export interface AppSystemInstance {
@@ -84,21 +105,8 @@ export function createPhasePipeline(): PhasePipeline {
     [Phases.IO]: [],
     [Phases.Update]: [],
     [Phases.Render]: [],
-    [Phases.Cleanup]: [cleanupFrame],
+    [Phases.Cleanup]: [],
   };
-}
-
-export function collectSystemLogic(systems: AppSystemInstance[]): PhasePipeline {
-  const collectedLogic = createPhasePipeline();
-
-  for (const system of systems) {
-    collectedLogic[Phases.IO].push(...(system.logic[Phases.IO] ?? []));
-    collectedLogic[Phases.Update].push(...(system.logic[Phases.Update] ?? []));
-    collectedLogic[Phases.Render].push(...(system.logic[Phases.Render] ?? []));
-    collectedLogic[Phases.Cleanup].push(...(system.logic[Phases.Cleanup] ?? []));
-  }
-
-  return collectedLogic;
 }
 
 export function mergePipelines(pipelines: PhasePipeline[]): PhasePipeline {
@@ -114,38 +122,53 @@ export function mergePipelines(pipelines: PhasePipeline[]): PhasePipeline {
   return merged;
 }
 
-/**
- * One-time setup for the persistent application state.
- */
-export function createAppRef(root: HTMLElement): AppRef {
-  const document = root.ownerDocument;
-  const window = document.defaultView;
-  assert(window, "Window object not available for provided root element");
+export function collectSystemLogic(systems: AppSystemInstance[]): PhasePipeline {
+  const collectedLogic = createPhasePipeline();
 
+  for (const system of systems) {
+    collectedLogic[Phases.IO].push(...(system.logic[Phases.IO] ?? []));
+    collectedLogic[Phases.Update].push(...(system.logic[Phases.Update] ?? []));
+    collectedLogic[Phases.Render].push(...(system.logic[Phases.Render] ?? []));
+    collectedLogic[Phases.Cleanup].push(...(system.logic[Phases.Cleanup] ?? []));
+  }
+
+  return collectedLogic;
+}
+
+export function createSyncBuffer(): FrameSyncBuffer {
   return {
-    owner: {
-      window,
-      document,
-      root,
+    inbound: {
+      patches: [],
+      windowSnapshots: [],
+      stream: {
+        expectedChunks: 0,
+        chunks: [],
+        isDone: false,
+      },
+      resize: null,
     },
-    board: BitSet.fromBitCount(1_048_576),
-    gateway: createGateway("http://localhost:4000/view"),
-    view: createViewLayout(root),
-    viewport: createViewport(root),
-    renderLoop: null,
-    readExecutor: noop,
-    writeExecutor: noop,
+    outbound: {
+      cursorPosition: -1,
+      pendingToggles: [],
+      pendingBatchToggles: [],
+    },
   };
 }
 
 /**
- * Creates the ephemeral, layout-dependent state.
+ * Direct initialization for the application container context.
  */
-export function createViewLayout(root: HTMLElement): ViewLayout {
+export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
   const document = root.ownerDocument;
-  const rect = root.getBoundingClientRect();
+  const window = document.defaultView;
+  assert(window, "Window object not available for provided root element");
 
-  const layout = createLayout({
+  root.classList.add("_int_root");
+
+  const rect = root.getBoundingClientRect();
+  const layoutCalculator = new LayoutCalculator();
+
+  const layoutContext = layoutCalculator.create({
     checkboxSize: 24,
     gridSpacing: 8,
     viewportSize: { width: rect.width, height: rect.height },
@@ -158,40 +181,51 @@ export function createViewLayout(root: HTMLElement): ViewLayout {
     slidePadding: { vertical: 12, horizontal: 12 },
     minGridDimension: 2,
     maxGridDimension: 128,
-    targetDivisor: 65_535 * 16,
+    totalItemCount: 65_535 * 16,
   });
 
-  const slides = createSlides(new SlideFactory(document), layout.slideCount.total);
+  writeVariables(root, layoutContext);
 
-  const slidesVisibilityTracker = createVisibilityTracker(root, slides);
+  const slidesCollection = createSlides(
+    new SlideFactory(document),
+    layoutContext.computed.slideCount.total,
+  );
 
   return {
-    layout,
-    slides,
-    slidesVisibilityTracker,
-    motion: createMotion(),
-    loopState: initialLoopState(),
-    dirtyFlags: createFlagManager(AppDirtyFlags.None),
+    host: {
+      window,
+      document,
+      rootElement: root,
+      transport,
+    },
+    state: {
+      layout: {
+        current: layoutContext,
+        viewport: new Viewport(root),
+      },
+      motion: {
+        track: createMotion(),
+        slides: slidesCollection,
+        visibility: new VisibilityTracker(slidesCollection),
+      },
+      selectionBoard: BitSet.fromBitCount(1_048_576),
+      syncBuffer: createSyncBuffer(),
+      dirtyFlags: createFlagManager(AppDirtyFlags.None),
+    },
+    engine: {
+      loop: null,
+    },
   };
 }
 
-/**
- * Triggers a redraw for the next render frame.
- */
-export function markForCheck(app: AppRef): void {
-  app.view.dirtyFlags.set(AppDirtyFlags.FrameNeedsRedraw);
+export function markForCheck(flags: BitwiseFlags): void {
+  flags.set(AppDirtyFlags.FrameNeedsRedraw);
 }
 
-/**
- * Checks if the current frame has been marked for a redraw.
- */
-export function needsCheck(app: AppRef): boolean {
-  return app.view.dirtyFlags.is(AppDirtyFlags.FrameNeedsRedraw);
+export function needsCheck(flags: BitwiseFlags): boolean {
+  return flags.is(AppDirtyFlags.FrameNeedsRedraw);
 }
 
-/**
- * Resets the redraw flag at the end of the pipeline.
- */
-export function cleanupFrame(app: AppRef): void {
-  app.view.dirtyFlags.unset(AppDirtyFlags.FrameNeedsRedraw);
+export function cleanupFrame(flags: BitwiseFlags): void {
+  flags.unset(AppDirtyFlags.FrameNeedsRedraw);
 }

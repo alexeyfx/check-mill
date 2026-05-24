@@ -1,35 +1,36 @@
 import type { AppRef, AppSystemInstance } from "../components";
 import { Phases, Dataset } from "../components";
 import type { Disposable, LoopParams } from "../core";
-import { DisposableStoreId, createDisposableStore, event, throttle } from "../core";
+import { DisposableStore, event, throttle } from "../core";
 
 export function ToggleSystem(appRef: AppRef): AppSystemInstance {
+  const { state } = appRef;
+
   const toggleQueue: number[] = [];
-  const disposables = createDisposableStore();
-  const itemsPerSlide = appRef.view.layout.pagination.itemsPerSlide;
+  const disposables = new DisposableStore();
+  const itemsPerSlide = appRef.state.layout.current.computed.pagination.itemsPerSlide;
 
   function init(): Disposable {
     disposables.push(
-      DisposableStoreId.Static,
-      event(appRef.owner.root, "click", handleToggle),
+      event(appRef.host.rootElement, "click", handleToggle),
       () => (toggleQueue.length = 0),
     );
 
     return () => disposables.flushAll();
   }
 
-  function processToggles(app: AppRef, _params: LoopParams): void {
+  function processToggles(_params: LoopParams): void {
     if (toggleQueue.length === 0) return;
 
     const merged = mergeToggles(toggleQueue);
 
     for (const toggle of merged) {
-      app.board.flip(toggle);
+      state.selectionBoard.flip(toggle);
     }
 
-    if (merged.length) {
-      merged.length > 1 ? app.gateway.sendToggleMany(merged) : app.gateway.sendToggle(merged[0]);
-    }
+    // if (merged.length) {
+    //   merged.length > 1 ? app.gateway.sendToggleMany(merged) : app.gateway.sendToggle(merged[0]);
+    // }
 
     toggleQueue.length = 0;
   }

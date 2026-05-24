@@ -1,104 +1,109 @@
 import { type Disposable } from "../core";
 import { type Component } from "./component";
-import { Slide, SlidesCollectionType } from "./slides";
+import { type ComputedLayout } from "./layout";
+import { type MotionType } from "./scroll-motion";
 
-export const enum VisibilityState {
-  Hidden = 1,
-  Visible = 2,
+export const enum IntersectionState {
+  Outside = 1,
+  Inside = 2,
 }
 
-export const enum VisibilityChange {
-  Exited = -1,
+export const enum FrustumMutation {
+  Culled = -1,
   NoChange = 0,
-  Entered = 1,
+  Unculled = 1,
 }
 
-export type VisibilityRecord = {
-  slide: Slide;
-  change: VisibilityChange.Entered | VisibilityChange.Exited;
-};
-
-export interface VisibilityTrackerType extends Component {
-  takeRecords(): VisibilityRecord[];
-  getVisibleSlides(): SlidesCollectionType;
-  getFirstVisibleSlide(): Slide | null;
+export interface SpatialEntity {
+  readonly realIndex: number;
+  readonly virtualIndex: number;
+  readonly viewportOffset: number;
 }
 
-export function createVisibilityTracker(
-  root: HTMLElement,
-  slides: SlidesCollectionType,
-): VisibilityTrackerType {
-  const elementCount = slides.length;
-  const lastRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
-  const currentRecords = new Uint8Array(elementCount).fill(VisibilityState.Hidden);
+export interface SpatialDeltaManifest<T extends SpatialEntity> {
+  readonly entity: T;
+  readonly mutation: FrustumMutation.Unculled | FrustumMutation.Culled;
+}
 
-  function init(): Disposable {
-    const observer = new IntersectionObserver(handleIntersection, {
-      root,
-      threshold: 0,
-    });
+export class VisibilityTracker<T extends SpatialEntity> implements Component {
+  private readonly count: number;
+  private readonly history: Uint8Array;
+  private readonly current: Uint8Array;
 
-    for (const slide of slides) {
-      slide.nativeElement.setAttribute("data-vi", slide.realIndex.toString());
-      observer.observe(slide.nativeElement);
-    }
+  private frameManifest: SpatialDeltaManifest<T>[] = [];
 
-    return () => observer.disconnect();
+  constructor(private readonly registry: readonly T[]) {
+    this.count = this.registry.length;
+    this.history = new Uint8Array(this.count).fill(IntersectionState.Outside);
+    this.current = new Uint8Array(this.count).fill(IntersectionState.Outside);
   }
 
-  function takeRecords(): VisibilityRecord[] {
-    const records: VisibilityRecord[] = [];
+  public init(): Disposable {
+    return () => this.reset();
+  }
 
-    for (let i = 0; i < elementCount; i++) {
-      const diff = currentRecords[i] - lastRecords[i];
-      if (diff === 0) continue;
+  public reset(): void {
+    this.history.fill(IntersectionState.Outside);
+    this.current.fill(IntersectionState.Outside);
+    this.frameManifest = [];
+  }
 
-      records.push({
-        slide: slides[i],
-        change: diff as VisibilityChange.Entered | VisibilityChange.Exited,
-      });
+  public executeIntersectionPass(
+    motion: Readonly<MotionType>,
+    layout: Readonly<ComputedLayout>,
+  ): void {
+    const totalCount = this.count;
+    const stride = layout.slide.height;
+    const slideHeight = layout.slide.height;
+
+    const minLimit = -motion.current;
+    const maxLimit = minLimit + layout.contentArea.height;
+
+    for (let i = 0; i < totalCount; i++) {
+      const ent = this.registry[i];
+      const entMin = ent.virtualIndex * stride;
+      const entMax = entMin + slideHeight;
+
+      this.current[i] =
+        entMin < maxLimit && entMax > minLimit
+          ? IntersectionState.Inside
+          : IntersectionState.Outside;
     }
 
-    lastRecords.set(currentRecords);
+    this.computeDeltaManifest();
+  }
+
+  public takeRecords(): SpatialDeltaManifest<T>[] {
+    const records = this.frameManifest;
+    this.frameManifest = [];
     return records;
   }
 
-  function getVisibleSlides(): SlidesCollectionType {
-    const visible: Slide[] = [];
-    for (let i = 0; i < elementCount; i++) {
-      if (currentRecords[i] === VisibilityState.Visible) {
-        visible.push(slides[i]);
+  public getRetainedEntities(): T[] {
+    const totalCount = this.count;
+    const retained: T[] = [];
+
+    for (let i = 0; i < totalCount; i++) {
+      if (this.current[i] === IntersectionState.Inside) {
+        retained.push(this.registry[i]);
       }
     }
-    return visible;
+    return retained;
   }
 
-  function getFirstVisibleSlide(): Slide | null {
-    let first: Slide | null = null;
+  private computeDeltaManifest(): void {
+    const totalCount = this.count;
 
-    for (let i = 0; i < elementCount; i++) {
-      if (currentRecords[i] === VisibilityState.Visible) {
-        const slide = slides[i];
-        if (!first || slide.virtualIndex < first.virtualIndex) {
-          first = slide;
-        }
-      }
+    for (let i = 0; i < totalCount; i++) {
+      const delta = this.current[i] - this.history[i];
+      if (delta === 0) continue;
+
+      this.frameManifest.push({
+        entity: this.registry[i],
+        mutation: delta as FrustumMutation.Unculled | FrustumMutation.Culled,
+      });
     }
-    return first;
+
+    this.history.set(this.current);
   }
-
-  function handleIntersection(entries: IntersectionObserverEntry[]): void {
-    for (let i = 0; i < entries.length; i++) {
-      const entry = entries[i];
-      const idxStr = entry.target.getAttribute("data-vi");
-      if (idxStr === null) continue;
-
-      const index = parseInt(idxStr, 10);
-      currentRecords[index] = entry.isIntersecting
-        ? VisibilityState.Visible
-        : VisibilityState.Hidden;
-    }
-  }
-
-  return { init, takeRecords, getVisibleSlides, getFirstVisibleSlide };
 }

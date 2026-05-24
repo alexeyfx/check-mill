@@ -1,42 +1,39 @@
-import type {
-  AppRef,
-  AppSystemInstance,
-  SlidesRendererType,
-  VisibilityRecord,
-} from "../components";
-import {
-  Phases,
-  VisibilityChange,
-  writeVariables,
-  createSlidesRenderer,
-  AppDirtyFlags,
-  needsCheck,
-} from "../components";
+import type { AppRef, AppSystemInstance, Slide, SlidesRendererType } from "../components";
+import { Phases, createSlidesRenderer, needsCheck } from "../components";
+import { FrustumMutation, SpatialDeltaManifest } from "../components";
 import type { Disposable, LoopParams } from "../core";
-import { runIf, throttle } from "../core";
+import { DisposableStore, runIf, throttle } from "../core";
 
 export function RenderSystem(appRef: AppRef): AppSystemInstance {
+  const { host, state } = appRef;
+
   let renderer: SlidesRendererType;
 
   const BATCH_SIZE = 2;
-  const recordQueue: VisibilityRecord[] = [];
+  const recordQueue: SpatialDeltaManifest<Slide>[] = [];
 
   function init(): Disposable {
-    renderer = createSlidesRenderer(appRef.owner.document, appRef.owner.root, appRef.view.layout);
-    renderer.mountContainers(appRef.view.slides);
+    const disposables = new DisposableStore();
 
-    writeVariables(appRef.owner.root, appRef.view.layout);
+    renderer = createSlidesRenderer(
+      host.document,
+      host.rootElement,
+      state.layout.current,
+      state.motion.slides,
+    );
 
-    return () => {};
+    disposables.push(renderer.init());
+
+    return () => disposables.flushAll();
   }
 
-  function syncVisibility(app: AppRef, _params: LoopParams): void {
-    const records = app.view.slidesVisibilityTracker.takeRecords();
+  function syncVisibility(_params: LoopParams): void {
+    const records = state.motion.visibility.takeRecords();
     if (records.length > 0) {
       recordQueue.push(...records);
     }
 
-    const velocityMagnitude = Math.abs(app.view.motion.velocity);
+    const velocityMagnitude = Math.abs(state.motion.track.velocity);
 
     const dynamicBatchSize =
       velocityMagnitude > 20 ? Math.ceil(velocityMagnitude * 0.8) : BATCH_SIZE;
@@ -47,36 +44,30 @@ export function RenderSystem(appRef: AppRef): AppSystemInstance {
       const record = recordQueue.shift();
       if (!record) continue;
 
-      switch (record.change) {
-        case VisibilityChange.Exited:
-          renderer.dehydrate(record.slide);
+      switch (record.mutation) {
+        case FrustumMutation.Culled:
+          renderer.dehydrate(record.entity);
           break;
 
-        case VisibilityChange.Entered:
-          renderer.hydrate(record.slide, app.board);
+        case FrustumMutation.Unculled:
+          renderer.hydrate(record.entity, state.selectionBoard);
           break;
       }
     }
   }
 
-  function syncPosition(app: AppRef, _params: LoopParams): void {
-    renderer.syncPosition(app.view.slides, app.view.motion);
+  function syncPosition(_params: LoopParams): void {
+    renderer.syncPosition(state.motion.slides, state.motion.track);
   }
 
-  function lerp(app: AppRef, params: LoopParams): void {
-    const motion = app.view.motion;
-    const isDragging = app.view.dirtyFlags.is(AppDirtyFlags.GestureRunning);
-
-    if (isDragging) {
-      motion.offset = motion.current;
-    } else {
-      motion.offset = motion.previous + (motion.current - motion.previous) * params.alpha;
-    }
+  function lerp(params: LoopParams): void {
+    const motion = state.motion.track;
+    motion.offset = motion.previous + (motion.current - motion.previous) * params.alpha;
   }
 
-  function updateSlides(app: AppRef, _params: LoopParams): void {
-    for (const slide of app.view.slidesVisibilityTracker.getVisibleSlides()) {
-      renderer.updateState(slide, app.board);
+  function updateSlides(_params: LoopParams): void {
+    for (const slide of state.motion.visibility.getRetainedEntities()) {
+      renderer.updateState(slide, state.selectionBoard);
     }
   }
 
@@ -86,8 +77,8 @@ export function RenderSystem(appRef: AppRef): AppSystemInstance {
       [Phases.Render]: [
         lerp,
         syncPosition,
-        throttle(syncVisibility, 32),
-        runIf(needsCheck, updateSlides),
+        throttle(syncVisibility, 16),
+        runIf(() => needsCheck(state.dirtyFlags), updateSlides),
       ],
     },
   };

@@ -1,13 +1,13 @@
-import { px, BitSet } from "../core";
+import { px, BitSet, DisposableStore, Disposable } from "../core";
 import { Dataset } from "./constants";
 import { CheckboxFactory } from "./dom-factories";
-import { type LayoutProperties } from "./layout";
+import { type LayoutContext } from "./layout";
 import { MotionType } from "./scroll-motion";
 import { type SlidesCollectionType, type Slide } from "./slides";
-import { createTranslationController } from "./translate";
+import { TranslationController } from "./translate";
+import type { Component } from "./component";
 
-export interface SlidesRendererType {
-  mountContainers(slides: SlidesCollectionType): void;
+export interface SlidesRendererType extends Component {
   hydrate(slide: Slide, board: BitSet): void;
   dehydrate(slide: Slide): void;
   updateState(slide: Slide, board: BitSet): void;
@@ -22,41 +22,51 @@ type SlideTemplate = {
 export function createSlidesRenderer(
   ownerDocument: Document,
   root: HTMLElement,
-  layout: Readonly<LayoutProperties>,
+  layout: Readonly<LayoutContext>,
+  slides: SlidesCollectionType,
 ): SlidesRendererType {
-  const translate = createTranslationController();
   const templatePool: SlideTemplate[] = [];
   const freeTemplates: SlideTemplate[] = [];
   const activeTemplates = new Map<HTMLElement, SlideTemplate>();
 
-  const { itemsPerSlide } = layout.pagination;
-  const slideTranslateRange = layout.contentArea.height - 2 * layout.slideSpacing;
-  const stride = layout.slide.height + layout.slideSpacing;
+  const { itemsPerSlide } = layout.computed.pagination;
+  const slideTranslateRange = layout.computed.contentArea.height - 2 * layout.config.slideSpacing;
+  const stride = layout.computed.slide.height + layout.config.slideSpacing;
 
-  root.classList.add("_int_root");
+  const poolSize = layout.computed.slideCount.visible + 2;
 
-  const poolSize = layout.slideCount.visible + 2;
-  for (let i = 0; i < poolSize; i++) {
-    templatePool.push(createSlideTemplate());
+  function init(): Disposable {
+    const disposables = new DisposableStore();
+
+    for (let i = 0; i < poolSize; i++) {
+      templatePool.push(createSlideTemplate());
+    }
+
+    disposables.push(mountContainers(slides), () => (templatePool.length = 0));
+
+    return () => disposables.flushAll();
   }
 
-  function mountContainers(slides: SlidesCollectionType): void {
-    const { width: vw } = layout.viewportSize;
-    const { width: sw } = layout.slide;
+  function mountContainers(slides: SlidesCollectionType): Disposable {
+    const { width: vw } = layout.config.viewportSize;
+    const { width: sw } = layout.computed.slide;
     const centerX = px((vw - sw) / 2);
 
-    const stage = ownerDocument.createDocumentFragment();
+    const stage = ownerDocument.createElement("div");
+    stage.classList.add("_int_slides");
 
     for (const { nativeElement, realIndex } of slides) {
       const style = nativeElement.style;
 
-      style.top = px(realIndex * stride + layout.slideSpacing);
+      style.top = px(realIndex * stride + layout.config.slideSpacing);
       style.left = centerX;
 
       stage.appendChild(nativeElement);
     }
 
-    root.replaceChildren(stage);
+    root.appendChild(stage);
+
+    return () => root.removeChild(stage);
   }
 
   function hydrate(slide: Slide, board: BitSet): void {
@@ -125,7 +135,7 @@ export function createSlidesRenderer(
 
     for (let i = 0; i < count; i++) {
       const slide = slides[i];
-      translate.to(slide.nativeElement, slide.viewportOffset * range + mOffset);
+      TranslationController.to(slide.nativeElement, slide.viewportOffset * range + mOffset);
     }
   }
 
@@ -135,8 +145,8 @@ export function createSlidesRenderer(
 
     const inputs: HTMLInputElement[] = [];
     const factory = new CheckboxFactory(ownerDocument);
-    const { rows, columns } = layout.grid;
-    const cellSize = layout.checkboxSize + layout.gridSpacing;
+    const { rows, columns } = layout.computed.grid;
+    const cellSize = layout.config.checkboxSize + layout.config.gridSpacing;
 
     for (let row = 0; row < rows; row++) {
       const rowOffset = row * columns;
@@ -159,5 +169,5 @@ export function createSlidesRenderer(
     return { wrapper, inputs };
   }
 
-  return { mountContainers, hydrate, dehydrate, updateState, syncPosition };
+  return { init, hydrate, dehydrate, updateState, syncPosition };
 }
