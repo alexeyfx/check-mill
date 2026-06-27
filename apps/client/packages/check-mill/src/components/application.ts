@@ -181,7 +181,7 @@ export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
     slidePadding: { vertical: 12, horizontal: 12 },
     minGridDimension: 2,
     maxGridDimension: 128,
-    totalItemCount: 65_535 * 16,
+    totalItemCount: 65_536 * 16,
   });
 
   writeVariables(root, layoutContext);

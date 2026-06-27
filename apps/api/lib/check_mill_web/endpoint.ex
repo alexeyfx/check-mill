@@ -2,7 +2,7 @@ defmodule CheckMillWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :check_mill
 
   socket("/view", CheckMillWeb.UserSocket,
-    websocket: true,
+    websocket: [connect_info: [:peer_data, :x_headers]],
     longpoll: false
   )
 

@@ -40,7 +40,9 @@ export function throttle<T extends (...args: any[]) => void>(
 
 /**
  * Creates a debounced version of the given function that delays invoking it
- * until after `wait` milliseconds have elapsed since the last time it was called.
+ * until after `wait` milliseconds have elapsed since the last time it was
+ * called. Each call resets the timer, so only the final
+ * invocation within a quiet window actually runs.
  *
  * The returned function is intended to be called from a render/update loop.
  *
@@ -55,22 +57,17 @@ export function debounce<T extends (...args: any[]) => void>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
-  let lastCall = 0;
-  let lastArgs: Parameters<T> | undefined;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
 
   return (...args: Parameters<T>) => {
-    const now = performance.now();
-
-    lastArgs = args;
-
-    if (now - lastCall >= wait) {
-      lastCall = now;
-
-      const nextArgs = lastArgs;
-      lastArgs = undefined;
-
-      return func(...nextArgs);
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
     }
+
+    timeout = setTimeout(() => {
+      timeout = undefined;
+      func(...args);
+    }, wait);
   };
 }
 

@@ -19,17 +19,20 @@ defmodule CheckMill.GridStore do
 
   @num_chunks Config.num_chunks()
 
+  @zero_chunk :binary.copy(<<0>>, @chunk_bytes)
+
   def start_link(_opts), do: GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
 
   def toggle(idx) when is_integer(idx) do
-    idx = idx &&& @grid_mask
-    {chunk_id, bit_in_chunk} = chunk_pos(idx)
+    GenServer.call(__MODULE__, {:toggle, idx &&& @grid_mask})
+  end
 
-    bin = get_chunk(chunk_id)
-    new_bin = flip_bit(bin, bit_in_chunk)
+  def toggle_many(idxs) when is_list(idxs) do
+    GenServer.call(__MODULE__, {:toggle_many, idxs})
+  end
 
-    :ets.insert(@table, {chunk_id, new_bin})
-    bit_value(new_bin, bit_in_chunk)
+  def global_snapshot_chunks(bytes_per_chunk) do
+    GenServer.call(__MODULE__, {:global_snapshot_chunks, bytes_per_chunk})
   end
 
   def window_snapshot(pos) when is_integer(pos) do
@@ -56,14 +59,6 @@ defmodule CheckMill.GridStore do
     bits
   end
 
-  def global_snapshot_chunks(bytes_per_chunk) do
-    0..(@num_chunks - 1)
-    |> Stream.map(&get_chunk/1)
-    |> Enum.into(<<>>)
-    |> :zlib.gzip()
-    |> chunk_binary(bytes_per_chunk)
-  end
-
   @impl true
   def init(:ok) do
     :ets.new(@table, [
@@ -74,7 +69,54 @@ defmodule CheckMill.GridStore do
       write_concurrency: true
     ])
 
-    {:ok, %{}}
+    {:ok, %{snapshot_cache: nil, dirty: true}}
+  end
+
+  @impl true
+  def handle_call({:toggle, idx}, _from, state) do
+    val = do_toggle(idx)
+    {:reply, val, %{state | dirty: true}}
+  end
+
+  @impl true
+  def handle_call({:toggle_many, idxs}, _from, state) do
+    patches =
+      for idx <- idxs do
+        idx = idx &&& @grid_mask
+        [idx, do_toggle(idx)]
+      end
+
+    {:reply, patches, %{state | dirty: true}}
+  end
+
+  @impl true
+  def handle_call({:global_snapshot_chunks, bytes_per_chunk}, _from, state) do
+    case state do
+      %{dirty: false, snapshot_cache: {^bytes_per_chunk, chunks}} ->
+        {:reply, chunks, state}
+
+      _ ->
+        chunks = compute_global_snapshot_chunks(bytes_per_chunk)
+        {:reply, chunks, %{state | dirty: false, snapshot_cache: {bytes_per_chunk, chunks}}}
+    end
+  end
+
+  defp do_toggle(idx) do
+    {chunk_id, bit_in_chunk} = chunk_pos(idx)
+
+    bin = get_chunk(chunk_id)
+    new_bin = flip_bit(bin, bit_in_chunk)
+
+    :ets.insert(@table, {chunk_id, new_bin})
+    bit_value(new_bin, bit_in_chunk)
+  end
+
+  defp compute_global_snapshot_chunks(bytes_per_chunk) do
+    0..(@num_chunks - 1)
+    |> Stream.map(&get_chunk/1)
+    |> Enum.into(<<>>)
+    |> :zlib.gzip()
+    |> chunk_binary(bytes_per_chunk)
   end
 
   defp chunk_pos(idx) do
@@ -85,13 +127,8 @@ defmodule CheckMill.GridStore do
 
   defp get_chunk(chunk_id) when is_integer(chunk_id) and chunk_id >= 0 do
     case :ets.lookup(@table, chunk_id) do
-      [{^chunk_id, bin}] ->
-        bin
-
-      [] ->
-        zero = :binary.copy(<<0>>, @chunk_bytes)
-        :ets.insert(@table, {chunk_id, zero})
-        zero
+      [{^chunk_id, bin}] -> bin
+      [] -> @zero_chunk
     end
   end
 
@@ -112,18 +149,18 @@ defmodule CheckMill.GridStore do
   end
 
   defp extract_bits(bin, bit_off, bit_len) do
-    <<_::size(bit_off), bits::bitstring-size(bit_len), _::bitstring>> = bin
+    <<_::size(^bit_off), bits::bitstring-size(^bit_len), _::bitstring>> = bin
     bits
   end
 
   defp flip_bit(bin, bit_index) do
-    <<prefix::bitstring-size(bit_index), b::1, rest::bitstring>> = bin
+    <<prefix::bitstring-size(^bit_index), b::1, rest::bitstring>> = bin
     new_bit = bxor(b, 1)
     <<prefix::bitstring, new_bit::1, rest::bitstring>>
   end
 
   defp bit_value(bin, bit_index) do
-    <<_::bitstring-size(bit_index), b::1, _::bitstring>> = bin
+    <<_::bitstring-size(^bit_index), b::1, _::bitstring>> = bin
     b
   end
 

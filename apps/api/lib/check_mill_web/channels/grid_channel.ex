@@ -101,12 +101,13 @@ defmodule CheckMillWeb.GridChannel do
   end
 
   defp process_batch_toggles(idxs) do
-    for idx <- idxs do
-      idx = idx &&& GridConfig.grid_mask()
-      val = GridStore.toggle(idx)
+    patches = GridStore.toggle_many(idxs)
+
+    for [idx, val] <- patches do
       SegmentBroadcaster.enqueue(idx >>> GridConfig.seg_shift(), idx, val)
-      [idx, val]
     end
+
+    patches
   end
 
   defp apply_cursor(socket, pos) do
