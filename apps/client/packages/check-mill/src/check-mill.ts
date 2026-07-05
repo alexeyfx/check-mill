@@ -11,7 +11,7 @@ import {
   type Disposable,
   assert,
 } from "./core";
-// import { RenderSystem, ScrollSystem, SyncSystem, ToggleSystem, UpdateSystem } from "./systems";
+import { RenderSystem, ScrollSystem, SyncSystem, ToggleSystem, UpdateSystem } from "./systems";
 
 export interface CheckMillConfig {
   /**
@@ -59,11 +59,11 @@ export function CheckMill(config: CheckMillConfig): Promise<CheckMillType> {
   );
 
   const systems: AppSystemInstance[] = [
-    // ToggleSystem(appRef),
-    // ScrollSystem(appRef),
-    // SyncSystem(appRef),
-    // UpdateSystem(appRef),
-    // RenderSystem(appRef),
+    ToggleSystem(appRef),
+    ScrollSystem(appRef),
+    SyncSystem(appRef),
+    UpdateSystem(appRef),
+    RenderSystem(appRef),
   ];
 
   for (const system of systems) {

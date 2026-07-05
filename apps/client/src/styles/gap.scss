@@ -1,19 +1,19 @@
 $gaps: 1, 2, 4, 8, 12, 16, 24, 32;
 
 @each $gap in $gaps {
-  .gap-#{$gap} {
-    gap: calc(var(--spacing) * #{$gap});
-  }
+    .gap-#{$gap} {
+        gap: calc(var(--spacing) * #{$gap});
+    }
 }
 
 @each $gap in $gaps {
-  .gap-y-#{$gap} {
-    row-gap: calc(var(--spacing) * #{$gap});
-  }
+    .gap-y-#{$gap} {
+        row-gap: calc(var(--spacing) * #{$gap});
+    }
 }
 
 @each $gap in $gaps {
-  .gap-x-#{$gap} {
-    column-gap: calc(var(--spacing) * #{$gap});
-  }
+    .gap-x-#{$gap} {
+        column-gap: calc(var(--spacing) * #{$gap});
+    }
 }
