@@ -18,8 +18,11 @@ body {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
     background-color: #eff7f6;
+    overflow: hidden;
 }
 
 #app {
+    --padding-inline: calc(5 * var(--spacing));
+
     display: contents;
 }

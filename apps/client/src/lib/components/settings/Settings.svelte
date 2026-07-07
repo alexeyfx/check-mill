@@ -1,43 +1,6 @@
 <script lang="ts"></script>
 
 <div class="root">
-    <div class="header">
-        <div class="logo">
-            <svg
-                width="32"
-                height="32"
-                viewBox="0 0 32 32"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                class="checkbox-svg"
-            >
-                <path
-                    d="M0 8C0 3.5817 3.5817 0 8 0H24C28.4183 0 32 3.5817 32 8V24C32 28.4183 28.4183 32 24 32H8C3.5817 32 0 28.4183 0 24V8Z"
-                    fill="#3B73FD"
-                />
-                <path
-                    d="M22.0064 9.2627C22.7466 8.5225 23.9468 8.52245 24.687 9.2627L24.7559 9.33155C25.496 10.0718 25.496 11.272 24.7559 12.0122L14.6743 22.0932C13.934 22.8334 12.7338 22.8335 11.9936 22.0933L6.7832 16.883C6.04295 16.1427 6.043 14.9426 6.7832 14.2023C7.52345 13.4621 8.7236 13.4621 9.46385 14.2023L12.8745 17.6129L22.0064 9.2627Z"
-                    fill="#FFFEFE"
-                />
-            </svg>
-            <svg
-                width="64"
-                height="64"
-                viewBox="0 0 64 64"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                class="confetti-svg"
-            >
-                <!-- simplified confetti left unchanged -->
-                <circle cx="32" cy="10" r="2" fill="#2B75FC" />
-                <circle cx="10" cy="32" r="1.5" fill="#3B73FD" />
-                <circle cx="38" cy="52" r="1" fill="#EA3A3D" />
-                <circle cx="24" cy="57" r="2" fill="#FAB95A" />
-            </svg>
-        </div>
-        <h2 class="title">Check me...</h2>
-    </div>
-
     <div class="body">
         <section class="section flex flex-column gap-4">
             <div class="flex items-center justify-between gap-4">
@@ -92,36 +55,6 @@
         display: flex;
         flex-direction: column;
         gap: 32px;
-    }
-
-    .header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .title {
-        font-size: 20px;
-        letter-spacing: 0.02em;
-    }
-
-    .logo {
-        position: relative;
-        width: 48px;
-        height: 48px;
-    }
-
-    .checkbox-svg,
-    .confetti-svg {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .confetti-svg {
-        opacity: 0.7;
-        pointer-events: none;
     }
 
     .body {
