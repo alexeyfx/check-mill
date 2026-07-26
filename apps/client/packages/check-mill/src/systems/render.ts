@@ -1,16 +1,42 @@
-import type { AppRef, AppSystemInstance, Slide, SlidesRendererType } from "../components";
-import { Phases, createSlidesRenderer, needsCheck } from "../components";
-import { FrustumMutation, SpatialDeltaManifest } from "../components";
+import type { AppSystemInstance, SystemContext, SlidesRendererType } from "../components";
+import type { HydrationSink } from "../components";
+import {
+  AppDirtyFlags,
+  Phases,
+  cleanupFrame,
+  createSlidesRenderer,
+  getRetainedEntities,
+  isDirty,
+  reconcileHydration,
+} from "../components";
 import type { Disposable, LoopParams } from "../core";
-import { DisposableStore, runIf, throttle } from "../core";
+import { DisposableStore, runIf } from "../core";
 
-export function RenderSystem(appRef: AppRef): AppSystemInstance {
+const BATCH_SIZE = 2;
+
+/** Anything that can move a slide relative to the viewport. */
+const GEOMETRY_CHANGED = AppDirtyFlags.Motion | AppDirtyFlags.Layout;
+
+/** Anything that can change what a mounted slide should be showing. */
+const REPAINT_NEEDED = AppDirtyFlags.Board | AppDirtyFlags.Hydration;
+
+/** Projects the board onto the pooled slide templates. */
+export type RenderContext = SystemContext<
+  "document" | "rootElement",
+  "layout" | "motion" | "selectionBoard" | "frame"
+>;
+
+export function RenderSystem(appRef: RenderContext): AppSystemInstance {
   const { host, state } = appRef;
 
   let renderer: SlidesRendererType;
+  let sink: HydrationSink;
 
-  const BATCH_SIZE = 2;
-  const recordQueue: SpatialDeltaManifest<Slide>[] = [];
+  /** Cleared whenever a reconcile pass leaves work outstanding. */
+  let settled = false;
+
+  /** Track position at the last reconcile, for sizing the next one. */
+  let reconciledAt = 0;
 
   function init(): Disposable {
     const disposables = new DisposableStore();
@@ -22,64 +48,75 @@ export function RenderSystem(appRef: AppRef): AppSystemInstance {
       state.motion.slides,
     );
 
+    sink = {
+      mountedPages: renderer.mountedPages,
+      hydrate: (slide) => renderer.hydrate(slide, state.selectionBoard),
+      dehydrate: (slide) => renderer.dehydrate(slide),
+    };
+
+    settled = false;
+    reconciledAt = state.motion.track.position;
+
     disposables.push(renderer.init());
 
     return () => disposables.flushAll();
   }
 
+  /**
+   * Mounts and releases slide templates, a bounded number per frame.
+   *
+   * Latched rather than purely flag-driven: the budget means one pass rarely
+   * finishes the work, so this keeps running until a pass finds nothing left to
+   * do. `reconcileHydration` returning zero is that signal — with a non-zero
+   * budget it can only mean every slide already shows the page it should.
+   */
   function syncVisibility(_params: LoopParams): void {
-    const records = state.motion.visibility.takeRecords();
-    if (records.length > 0) {
-      recordQueue.push(...records);
-    }
+    if (settled && !isDirty(state.frame, AppDirtyFlags.Hydration)) return;
 
-    const velocityMagnitude = Math.abs(state.motion.track.velocity);
+    const position = state.motion.track.position;
+    const crossed = Math.abs(position - reconciledAt) / state.layout.current.derived.stride;
 
-    const dynamicBatchSize =
-      velocityMagnitude > 20 ? Math.ceil(velocityMagnitude * 0.8) : BATCH_SIZE;
+    reconciledAt = position;
 
-    const limit = Math.min(recordQueue.length, dynamicBatchSize);
+    // Two operations for every slide that went past — one release and one
+    // mount — with a floor so a nearly-settled view still creeps forward.
+    // Measuring the distance actually travelled since the last pass is what
+    // makes this scale with scroll speed; an earlier version scaled it by
+    // `motion.velocity`, which nothing ever assigned, so it was always the floor.
+    const budget = Math.max(BATCH_SIZE, Math.ceil(crossed) * 2);
 
-    for (let i = 0; i < limit; i++) {
-      const record = recordQueue.shift();
-      if (!record) continue;
-
-      switch (record.mutation) {
-        case FrustumMutation.Culled:
-          renderer.dehydrate(record.entity);
-          break;
-
-        case FrustumMutation.Unculled:
-          renderer.hydrate(record.entity, state.selectionBoard);
-          break;
-      }
-    }
+    settled = reconcileHydration(sink, state.motion.slides, state.motion.visibility, budget) === 0;
   }
 
+  /**
+   * Writes the track position out to every slide.
+   *
+   * One `style.transform` per slide in the registry, so at 60fps this is the
+   * single most expensive thing in the frame — and pointless unless the track
+   * actually moved.
+   */
   function syncPosition(_params: LoopParams): void {
+    if (!isDirty(state.frame, GEOMETRY_CHANGED)) return;
+
     renderer.syncPosition(state.motion.slides, state.motion.track);
   }
 
-  function lerp(params: LoopParams): void {
-    const motion = state.motion.track;
-    motion.offset = motion.previous + (motion.current - motion.previous) * params.alpha;
-  }
-
   function updateSlides(_params: LoopParams): void {
-    for (const slide of state.motion.visibility.getRetainedEntities()) {
+    for (const slide of getRetainedEntities(state.motion.visibility)) {
       renderer.updateState(slide, state.selectionBoard);
     }
   }
 
   return {
     init,
+    isBusy: () => !settled,
     logic: {
       [Phases.Render]: [
-        lerp,
         syncPosition,
-        throttle(syncVisibility, 16),
-        runIf(() => needsCheck(state.dirtyFlags), updateSlides),
+        syncVisibility,
+        runIf(() => isDirty(state.frame, REPAINT_NEEDED), updateSlides),
       ],
+      [Phases.Cleanup]: [() => cleanupFrame(state.frame)],
     },
   };
 }

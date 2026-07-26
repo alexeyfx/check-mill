@@ -1,17 +1,10 @@
-import { type Disposable } from "../core";
-import { type Component } from "./component";
-import { type ComputedLayout } from "./layout";
 import { type MotionType } from "./scroll-motion";
+import { slideTrackOffset } from "./track-geometry";
+import type { ViewPlan } from "./view-plan";
 
 export const enum IntersectionState {
-  Outside = 1,
-  Inside = 2,
-}
-
-export const enum FrustumMutation {
-  Culled = -1,
-  NoChange = 0,
-  Unculled = 1,
+  Outside = 0,
+  Inside = 1,
 }
 
 export interface SpatialEntity {
@@ -20,90 +13,122 @@ export interface SpatialEntity {
   readonly viewportOffset: number;
 }
 
-export interface SpatialDeltaManifest<T extends SpatialEntity> {
-  readonly entity: T;
-  readonly mutation: FrustumMutation.Unculled | FrustumMutation.Culled;
+/**
+ * Which slides intersect the viewport, as of the last update.
+ *
+ * A single flag array, reused across frames — this runs every tick over the
+ * whole registry and not allocating is the point. There is deliberately no
+ * record of the previous frame: what is actually mounted is tracked by the
+ * renderer, and keeping a second copy here is what let the two drift apart.
+ */
+export interface VisibilityState<T extends SpatialEntity> {
+  readonly registry: readonly T[];
+  readonly current: Uint8Array;
 }
 
-export class VisibilityTracker<T extends SpatialEntity> implements Component {
-  private readonly count: number;
-  private readonly history: Uint8Array;
-  private readonly current: Uint8Array;
+export function createVisibilityState<T extends SpatialEntity>(
+  registry: readonly T[],
+): VisibilityState<T> {
+  return {
+    registry,
+    current: new Uint8Array(registry.length).fill(IntersectionState.Outside),
+  };
+}
 
-  private frameManifest: SpatialDeltaManifest<T>[] = [];
+export function resetVisibility<T extends SpatialEntity>(state: VisibilityState<T>): void {
+  state.current.fill(IntersectionState.Outside);
+}
 
-  constructor(private readonly registry: readonly T[]) {
-    this.count = this.registry.length;
-    this.history = new Uint8Array(this.count).fill(IntersectionState.Outside);
-    this.current = new Uint8Array(this.count).fill(IntersectionState.Outside);
-  }
+/**
+ * Marks every slide inside or outside the viewport.
+ *
+ * The window is the viewport, not the runway — the renderer only pools
+ * `visible + 2` templates, so admitting more than that silently drops slides.
+ */
+export function executeIntersectionPass<T extends SpatialEntity>(
+  state: VisibilityState<T>,
+  motion: Readonly<MotionType>,
+  plan: ViewPlan,
+): boolean {
+  const { registry, current } = state;
 
-  public init(): Disposable {
-    return () => this.reset();
-  }
+  const count = registry.length;
+  const slideHeight = plan.computed.slide.height;
 
-  public reset(): void {
-    this.history.fill(IntersectionState.Outside);
-    this.current.fill(IntersectionState.Outside);
-    this.frameManifest = [];
-  }
+  const minLimit = -motion.position;
+  const maxLimit = minLimit + plan.config.viewportSize.height;
 
-  public executeIntersectionPass(
-    motion: Readonly<MotionType>,
-    layout: Readonly<ComputedLayout>,
-  ): void {
-    const totalCount = this.count;
-    const stride = layout.slide.height;
-    const slideHeight = layout.slide.height;
+  let changed = false;
 
-    const minLimit = -motion.current;
-    const maxLimit = minLimit + layout.contentArea.height;
+  for (let i = 0; i < count; i++) {
+    const entityMin = slideTrackOffset(registry[i], plan);
+    const entityMax = entityMin + slideHeight;
 
-    for (let i = 0; i < totalCount; i++) {
-      const ent = this.registry[i];
-      const entMin = ent.virtualIndex * stride;
-      const entMax = entMin + slideHeight;
+    const next =
+      entityMin < maxLimit && entityMax > minLimit
+        ? IntersectionState.Inside
+        : IntersectionState.Outside;
 
-      this.current[i] =
-        entMin < maxLimit && entMax > minLimit
-          ? IntersectionState.Inside
-          : IntersectionState.Outside;
+    // The slot already holds last frame's value, so the comparison is free and
+    // saves the reconcile pass from scanning a registry that did not move.
+    if (next !== current[i]) {
+      changed = true;
+      current[i] = next;
     }
-
-    this.computeDeltaManifest();
   }
 
-  public takeRecords(): SpatialDeltaManifest<T>[] {
-    const records = this.frameManifest;
-    this.frameManifest = [];
-    return records;
-  }
+  return changed;
+}
 
-  public getRetainedEntities(): T[] {
-    const totalCount = this.count;
-    const retained: T[] = [];
+export function isRetained<T extends SpatialEntity>(
+  state: VisibilityState<T>,
+  realIndex: number,
+): boolean {
+  return state.current[realIndex] === IntersectionState.Inside;
+}
 
-    for (let i = 0; i < totalCount; i++) {
-      if (this.current[i] === IntersectionState.Inside) {
-        retained.push(this.registry[i]);
-      }
+/**
+ * The retained slide nearest the top of the viewport, or null when none are.
+ *
+ * Both the resize anchor and the server cursor need to name the position the
+ * user is looking at, and they have to agree on it.
+ */
+export function topmostRetained<T extends SpatialEntity>(
+  state: VisibilityState<T>,
+  motion: Readonly<MotionType>,
+  plan: ViewPlan,
+): T | null {
+  const { registry, current } = state;
+  const count = registry.length;
+
+  let anchor: T | null = null;
+  let topmost = Number.POSITIVE_INFINITY;
+
+  for (let i = 0; i < count; i++) {
+    if (current[i] !== IntersectionState.Inside) continue;
+
+    const screenTop = slideTrackOffset(registry[i], plan) + motion.position;
+
+    if (screenTop < topmost) {
+      topmost = screenTop;
+      anchor = registry[i];
     }
-    return retained;
   }
 
-  private computeDeltaManifest(): void {
-    const totalCount = this.count;
+  return anchor;
+}
 
-    for (let i = 0; i < totalCount; i++) {
-      const delta = this.current[i] - this.history[i];
-      if (delta === 0) continue;
+export function getRetainedEntities<T extends SpatialEntity>(state: VisibilityState<T>): T[] {
+  const { registry, current } = state;
+  const count = registry.length;
 
-      this.frameManifest.push({
-        entity: this.registry[i],
-        mutation: delta as FrustumMutation.Unculled | FrustumMutation.Culled,
-      });
+  const retained: T[] = [];
+
+  for (let i = 0; i < count; i++) {
+    if (current[i] === IntersectionState.Inside) {
+      retained.push(registry[i]);
     }
-
-    this.history.set(this.current);
   }
+
+  return retained;
 }

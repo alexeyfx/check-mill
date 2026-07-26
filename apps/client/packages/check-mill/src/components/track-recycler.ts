@@ -1,7 +1,7 @@
 import { wrap } from "../core";
-import { type LayoutContext } from "./layout";
 import { type MotionType, moveTo } from "./scroll-motion";
 import { type SlidesCollectionType } from "./slides";
+import type { ViewPlan } from "./view-plan";
 
 export const enum TrackShiftDirection {
   Neutral,
@@ -9,139 +9,149 @@ export const enum TrackShiftDirection {
   ShiftedDown,
 }
 
-export interface ImmutableTrackState {
+/**
+ * Where the endless track currently sits: how many times it has looped, and
+ * which half of the runway it occupies.
+ */
+export interface TrackState {
   readonly loopCycleCount: number;
   readonly shiftDirection: TrackShiftDirection;
 }
 
-export interface SlideLayoutMetrics {
+export interface SlidePlacement {
   readonly realIndex: number;
   readonly viewportOffset: number;
   readonly virtualIndex: number;
   readonly pageIndex: number;
 }
 
-export class TrackRecycler {
-  private loopCycleCount = 0;
-  private shiftDirection = TrackShiftDirection.Neutral;
+export interface TrackClamp {
+  readonly position: number;
+  readonly cycleDelta: number;
+}
 
-  public getState(): ImmutableTrackState {
-    return {
-      loopCycleCount: this.loopCycleCount,
-      shiftDirection: this.shiftDirection,
+export function createTrackState(loopCycleCount = 0): TrackState {
+  return { loopCycleCount, shiftDirection: TrackShiftDirection.Neutral };
+}
+
+/**
+ * Folds a track position back onto the runway.
+ */
+export function clampTrackPosition(
+  position: number,
+  layout: ViewPlan,
+): TrackClamp {
+  const topLimit = 0;
+  const bottomLimit = -layout.computed.contentArea.height + layout.config.slideSpacing;
+
+  const wrapped = wrap(position, topLimit, bottomLimit);
+
+  if (Math.abs(position - wrapped) < 0.1) {
+    return { position, cycleDelta: 0 };
+  }
+
+  const cycleDelta = position < bottomLimit ? 1 : position > topLimit ? -1 : 0;
+
+  return { position: wrapped, cycleDelta };
+}
+
+/**
+ * Which end of the runway the buffer band has to be moved to.
+ */
+export function resolveShiftDirection(
+  position: number,
+  layout: ViewPlan,
+): TrackShiftDirection {
+  const midPointTrigger = layout.computed.contentArea.height / 2;
+
+  return Math.abs(position) > midPointTrigger
+    ? TrackShiftDirection.ShiftedDown
+    : TrackShiftDirection.ShiftedUp;
+}
+
+/**
+ * The full placement table for a registry of `count` slides.
+ */
+export function computePlacements(
+  track: Readonly<TrackState>,
+  layout: ViewPlan,
+  count: number,
+): SlidePlacement[] {
+  const { visible, total } = layout.computed.slideCount;
+  const { totalPages } = layout.computed.pagination;
+
+  const globalIterationOffset = track.loopCycleCount * total;
+  const placements: SlidePlacement[] = new Array(count);
+
+  for (let realIndex = 0; realIndex < count; realIndex++) {
+    let viewportOffset = 0;
+    let virtualIndex = realIndex + globalIterationOffset;
+
+    if (track.shiftDirection === TrackShiftDirection.ShiftedDown && realIndex < visible) {
+      viewportOffset = 1;
+      virtualIndex += total;
+    } else if (
+      track.shiftDirection === TrackShiftDirection.ShiftedUp &&
+      realIndex >= total - visible
+    ) {
+      viewportOffset = -1;
+      virtualIndex -= total;
+    }
+
+    placements[realIndex] = {
+      realIndex,
+      viewportOffset,
+      virtualIndex,
+      pageIndex: wrap(virtualIndex, 0, totalPages),
     };
   }
 
-  public update(
-    motion: MotionType,
-    layout: Readonly<LayoutContext>,
-    slides: SlidesCollectionType,
-  ): void {
-    const didTrackWrap = this.enforceTrackClamping(motion, layout);
-    this.reindexVirtualLayout(motion, layout, slides, didTrackWrap);
+  return placements;
+}
+
+export function applyPlacements(
+  slides: SlidesCollectionType,
+  placements: readonly SlidePlacement[],
+): void {
+  const count = slides.length;
+
+  for (let i = 0; i < count; i++) {
+    const slide = slides[i];
+    const placement = placements[i];
+
+    slide.viewportOffset = placement.viewportOffset;
+    slide.virtualIndex = placement.virtualIndex;
+    slide.pageIndex = placement.pageIndex;
+  }
+}
+
+/**
+ * Advances the track by one frame, returning the next track state.
+ */
+export function advanceTrack(
+  track: Readonly<TrackState>,
+  motion: MotionType,
+  layout: ViewPlan,
+  slides: SlidesCollectionType,
+): TrackState {
+  const clamp = clampTrackPosition(motion.position, layout);
+
+  if (clamp.cycleDelta !== 0) {
+    moveTo(motion, clamp.position);
   }
 
-  private enforceTrackClamping(motion: MotionType, layout: Readonly<LayoutContext>): boolean {
-    const { contentArea } = layout.computed;
-    const { slideSpacing } = layout.config;
+  const shiftDirection = resolveShiftDirection(motion.position, layout);
 
-    const topLimit = 0;
-    const bottomLimit = -1 * contentArea.height + slideSpacing;
-    const currentPosition = motion.current;
-
-    const wrappedPosition = wrap(currentPosition, topLimit, bottomLimit);
-
-    if (Math.abs(currentPosition - wrappedPosition) < 0.1) {
-      return false;
-    }
-
-    if (currentPosition < bottomLimit) {
-      this.loopCycleCount++;
-    } else if (currentPosition > topLimit) {
-      this.loopCycleCount--;
-    }
-
-    moveTo(motion, wrappedPosition);
-    return true;
+  if (shiftDirection === track.shiftDirection && clamp.cycleDelta === 0) {
+    return track;
   }
 
-  private reindexVirtualLayout(
-    motion: MotionType,
-    layout: Readonly<LayoutContext>,
-    slides: SlidesCollectionType,
-    forceRefresh: boolean,
-  ): void {
-    const targetDirection = this.calculateTargetShiftDirection(motion, layout);
-    if (targetDirection === this.shiftDirection && !forceRefresh) {
-      return;
-    }
+  const next: TrackState = {
+    loopCycleCount: track.loopCycleCount + clamp.cycleDelta,
+    shiftDirection,
+  };
 
-    this.shiftDirection = targetDirection;
+  applyPlacements(slides, computePlacements(next, layout, slides.length));
 
-    const calculatedLayoutPass = this.calculateLayoutPass(layout, slides);
-    this.applyCalculatedMetrics(slides, calculatedLayoutPass);
-  }
-
-  private calculateTargetShiftDirection(
-    motion: MotionType,
-    layout: Readonly<LayoutContext>,
-  ): TrackShiftDirection {
-    const midPointTrigger = layout.computed.contentArea.height / 2;
-    return Math.abs(motion.current) > midPointTrigger
-      ? TrackShiftDirection.ShiftedDown
-      : TrackShiftDirection.ShiftedUp;
-  }
-
-  private calculateLayoutPass(
-    layout: Readonly<LayoutContext>,
-    slides: SlidesCollectionType,
-  ): SlideLayoutMetrics[] {
-    const { visible, total } = layout.computed.slideCount;
-    const { totalPages } = layout.computed.pagination;
-    const globalIterationOffset = this.loopCycleCount * total;
-
-    const count = slides.length;
-    const metricsPassList: SlideLayoutMetrics[] = new Array(count);
-
-    for (let i = 0; i < count; i++) {
-      const slide = slides[i];
-      let viewportOffset = 0;
-      let virtualIndex = slide.realIndex + globalIterationOffset;
-
-      if (this.shiftDirection === TrackShiftDirection.ShiftedDown && slide.realIndex < visible) {
-        viewportOffset = 1;
-        virtualIndex += total;
-      } else if (
-        this.shiftDirection === TrackShiftDirection.ShiftedUp &&
-        slide.realIndex >= total - visible
-      ) {
-        viewportOffset = -1;
-        virtualIndex -= total;
-      }
-
-      metricsPassList[i] = {
-        realIndex: slide.realIndex,
-        viewportOffset,
-        virtualIndex,
-        pageIndex: wrap(virtualIndex, 0, totalPages - 1),
-      };
-    }
-
-    return metricsPassList;
-  }
-
-  private applyCalculatedMetrics(
-    slides: SlidesCollectionType,
-    metricsPassList: SlideLayoutMetrics[],
-  ): void {
-    const count = slides.length;
-    for (let i = 0; i < count; i++) {
-      const slide = slides[i];
-      const metrics = metricsPassList[i];
-
-      slide.viewportOffset = metrics.viewportOffset;
-      slide.virtualIndex = metrics.virtualIndex;
-      slide.pageIndex = metrics.pageIndex;
-    }
-  }
+  return next;
 }

@@ -1,14 +1,19 @@
-import type { AppRef, AppSystemInstance } from "../components";
-import { Phases, Dataset } from "../components";
+import type { AppSystemInstance, SystemContext } from "../components";
+import { AppDirtyFlags, Phases, hitTest, markDirty } from "../components";
 import type { Disposable, LoopParams } from "../core";
 import { DisposableStore, event, throttle } from "../core";
 
-export function ToggleSystem(appRef: AppRef): AppSystemInstance {
+/** Reads pointer coordinates against the layout, flips bits, sends them on. */
+export type ToggleContext = SystemContext<
+  "rootElement" | "transport",
+  "layout" | "motion" | "selectionBoard" | "frame"
+>;
+
+export function ToggleSystem(appRef: ToggleContext): AppSystemInstance {
   const { state } = appRef;
 
   const toggleQueue: number[] = [];
   const disposables = new DisposableStore();
-  const itemsPerSlide = appRef.state.layout.current.computed.pagination.itemsPerSlide;
 
   function init(): Disposable {
     disposables.push(
@@ -19,42 +24,39 @@ export function ToggleSystem(appRef: AppRef): AppSystemInstance {
     return () => disposables.flushAll();
   }
 
+  /**
+   * Ships the pending toggles to the server.
+   */
   function processToggles(_params: LoopParams): void {
     if (toggleQueue.length === 0) return;
 
     const merged = mergeToggles(toggleQueue);
-
-    for (const toggle of merged) {
-      state.selectionBoard.flip(toggle);
-    }
-
-    // if (merged.length) {
-    //   merged.length > 1 ? app.gateway.sendToggleMany(merged) : app.gateway.sendToggle(merged[0]);
-    // }
-
     toggleQueue.length = 0;
+
+    if (merged.length === 0) return;
+
+    const transport = appRef.host.transport;
+    merged.length > 1 ? transport.sendToggleMany(merged) : transport.sendToggle(merged[0]);
   }
 
+  /**
+   * Applies the toggle locally the moment it happens.
+   */
   function handleToggle(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
+    const hit = hitTest(
+      [event.clientX, event.clientY],
+      state.layout.viewport.measure(),
+      state.layout.current,
+      state.motion.slides,
+      state.motion.track,
+    );
 
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
+    if (!hit) return;
 
-    const parent = target.closest(`[data-${Dataset.SLIDE_INDEX}]`) as HTMLElement;
+    state.selectionBoard.flip(hit.index);
+    markDirty(state.frame, AppDirtyFlags.Board);
 
-    if (!parent) {
-      return;
-    }
-
-    const slideIndex = parseInt(parent.dataset[Dataset.SLIDE_INDEX] ?? "");
-    const checkboxIndex = parseInt(target.dataset[Dataset.CHECKBOX_INDEX] ?? "");
-
-    if (Number.isInteger(slideIndex) && Number.isInteger(checkboxIndex)) {
-      const index = slideIndex * itemsPerSlide + checkboxIndex;
-      toggleQueue.push(index);
-    }
+    toggleQueue.push(hit.index);
   }
 
   function mergeToggles(toggles: number[]): number[] {
@@ -73,6 +75,7 @@ export function ToggleSystem(appRef: AppRef): AppSystemInstance {
 
   return {
     init,
+    isBusy: () => toggleQueue.length > 0,
     logic: {
       [Phases.IO]: [throttle(processToggles, 300)],
     },

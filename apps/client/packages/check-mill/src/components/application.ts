@@ -5,23 +5,30 @@ import type {
   LoopParams,
   RenderLoopType,
 } from "../core";
-import { assert, createFlagManager, BitSet } from "../core";
+import { assert, createFlagManager, noop, BitSet } from "../core";
 import { SlideFactory } from "./dom-factories";
-import type { LayoutContext } from "./layout";
-import { LayoutCalculator } from "./layout";
+import { deriveViewPlan, type ViewPlan } from "./view-plan";
 import type { Transport, WindowSnapshot } from "./transport";
 import type { MotionType } from "./scroll-motion";
 import { createMotion } from "./scroll-motion";
 import type { Slide, SlidesCollectionType } from "./slides";
 import { createSlides } from "./slides";
+import { createTrackState, type TrackState } from "./track-recycler";
 import { Viewport } from "./viewport";
-import { VisibilityTracker } from "./visibility-tracker";
+import { createVisibilityState, type VisibilityState } from "./visibility-tracker";
 import { writeVariables } from "./styles";
 
 // prettier-ignore
 export const enum AppDirtyFlags {
-  None             = 0,
-  FrameNeedsRedraw = 1 << 1,
+  None      = 0,
+  /** The track moved: slides need repositioning and re-intersecting. */
+  Motion    = 1 << 0,
+  /** Selection bits changed: mounted slides need to re-read the board. */
+  Board     = 1 << 1,
+  /** The view plan was replaced: all derived geometry is stale. */
+  Layout    = 1 << 2,
+  /** The retained set or a page assignment changed: hydration must reconcile. */
+  Hydration = 1 << 3,
 }
 
 export const enum Phases {
@@ -39,14 +46,15 @@ export interface AppHostContext {
 }
 
 export interface LayoutDomain {
-  readonly current: LayoutContext;
+  current: ViewPlan;
   readonly viewport: Viewport;
 }
 
 export interface MotionDomain {
   readonly track: MotionType;
-  readonly slides: SlidesCollectionType;
-  readonly visibility: VisibilityTracker<Slide>;
+  slides: SlidesCollectionType;
+  visibility: VisibilityState<Slide>;
+  recycler: TrackState;
 }
 
 export interface FrameSyncBuffer {
@@ -58,13 +66,18 @@ export interface FrameSyncBuffer {
       expectedChunks: number;
       readonly chunks: Uint8Array[];
     };
-    resize: DOMRect | null;
   };
+}
 
-  readonly outbound: {
-    cursorPosition: number;
-    readonly pendingToggles: number[];
-    readonly pendingBatchToggles: number[];
+export interface FrameSignal {
+  readonly flags: BitwiseFlags;
+  wake: VoidFunction;
+}
+
+export function createFrameSignal(): FrameSignal {
+  return {
+    flags: createFlagManager(AppDirtyFlags.None),
+    wake: noop
   };
 }
 
@@ -73,7 +86,7 @@ export interface SimulationState {
   readonly motion: MotionDomain;
   readonly selectionBoard: BitSet;
   readonly syncBuffer: FrameSyncBuffer;
-  dirtyFlags: BitwiseFlags;
+  readonly frame: FrameSignal;
 }
 
 export interface EngineRuntime {
@@ -98,7 +111,19 @@ export type PhasePipeline = {
 export interface AppSystemInstance {
   init(): Disposable;
   readonly logic: Partial<PhasePipeline>;
+  isBusy(): boolean;
 }
+
+/**
+ * The slice of the application a system is allowed to reach.
+ */
+export type SystemContext<
+  HostKeys extends keyof AppHostContext = never,
+  StateKeys extends keyof SimulationState = never,
+> = {
+  readonly host: Pick<AppHostContext, HostKeys>;
+  readonly state: Pick<SimulationState, StateKeys>;
+};
 
 export function createPhasePipeline(): PhasePipeline {
   return {
@@ -145,13 +170,27 @@ export function createSyncBuffer(): FrameSyncBuffer {
         chunks: [],
         isDone: false,
       },
-      resize: null,
     },
-    outbound: {
-      cursorPosition: -1,
-      pendingToggles: [],
-      pendingBatchToggles: [],
-    },
+  };
+}
+
+/**
+ * Builds the slide registry and everything sized against it.
+ *
+ * Split out of `createAppRef` because a resize invalidates all of it — the grid
+ * dimensions, the slide count and therefore the meaning of `pageIndex` are all
+ * derived from the viewport, so the registry is rebuilt rather than patched.
+ */
+export function createSlideRegistry(
+  document: Document,
+  plan: ViewPlan,
+): Pick<MotionDomain, "slides" | "visibility" | "recycler"> {
+  const slides = createSlides(new SlideFactory(document), plan.computed.slideCount.total);
+
+  return {
+    slides,
+    visibility: createVisibilityState(slides),
+    recycler: createTrackState(),
   };
 }
 
@@ -166,9 +205,7 @@ export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
   root.classList.add("_int_root");
 
   const rect = root.getBoundingClientRect();
-  const layoutCalculator = new LayoutCalculator();
-
-  const layoutContext = layoutCalculator.create({
+  const plan = deriveViewPlan({
     checkboxSize: 24,
     gridSpacing: 8,
     viewportSize: { width: rect.width, height: rect.height },
@@ -184,12 +221,7 @@ export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
     totalItemCount: 65_536 * 16,
   });
 
-  writeVariables(root, layoutContext);
-
-  const slidesCollection = createSlides(
-    new SlideFactory(document),
-    layoutContext.computed.slideCount.total,
-  );
+  writeVariables(root, plan);
 
   return {
     host: {
@@ -200,17 +232,16 @@ export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
     },
     state: {
       layout: {
-        current: layoutContext,
+        current: plan,
         viewport: new Viewport(root),
       },
       motion: {
         track: createMotion(),
-        slides: slidesCollection,
-        visibility: new VisibilityTracker(slidesCollection),
+        ...createSlideRegistry(document, plan),
       },
-      selectionBoard: BitSet.fromBitCount(1_048_576),
+      selectionBoard: BitSet.fromBitCount(plan.config.totalItemCount),
       syncBuffer: createSyncBuffer(),
-      dirtyFlags: createFlagManager(AppDirtyFlags.None),
+      frame: createFrameSignal(),
     },
     engine: {
       loop: null,
@@ -218,14 +249,19 @@ export function createAppRef(root: HTMLElement, transport: Transport): AppRef {
   };
 }
 
-export function markForCheck(flags: BitwiseFlags): void {
-  flags.set(AppDirtyFlags.FrameNeedsRedraw);
+export function markDirty(frame: FrameSignal, changed: AppDirtyFlags): void {
+  frame.flags.set(changed);
+  frame.wake();
 }
 
-export function needsCheck(flags: BitwiseFlags): boolean {
-  return flags.is(AppDirtyFlags.FrameNeedsRedraw);
+export function isDirty(frame: FrameSignal, mask: AppDirtyFlags): boolean {
+  return (frame.flags.getValue() & mask) !== 0;
 }
 
-export function cleanupFrame(flags: BitwiseFlags): void {
-  flags.unset(AppDirtyFlags.FrameNeedsRedraw);
+export function isIdle(frame: FrameSignal): boolean {
+  return frame.flags.getValue() === AppDirtyFlags.None;
+}
+
+export function cleanupFrame(frame: FrameSignal): void {
+  frame.flags.reset(AppDirtyFlags.None);
 }

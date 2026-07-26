@@ -1,7 +1,6 @@
 import { assert } from "../../core";
-import { DivisibleGridSolver } from "./grid-solver";
-import { GridSolverStrategy } from "./grid-solver";
-import { ViewportBounds } from "./viewport-bounds";
+import { solveDivisibleGrid, type GridSolver } from "./grid-solver";
+import { availableGridHeight, availableGridWidth, lengthWithGaps } from "./viewport-bounds";
 
 export interface Size {
   readonly width: number;
@@ -36,7 +35,6 @@ export interface GridDimensions {
 
 export interface SlideCountMetrics {
   readonly visible: number;
-  readonly buffer: number;
   readonly total: number;
 }
 
@@ -59,96 +57,63 @@ export interface LayoutContext {
   readonly computed: Readonly<ComputedLayout>;
 }
 
-export class LayoutCalculator {
-  private readonly gridSolver: GridSolverStrategy;
+export function computeLayout(
+  config: LayoutConfig,
+  solve: GridSolver = solveDivisibleGrid,
+): ComputedLayout {
+  const checkboxFootprint = config.checkboxSize + config.gridSpacing;
+  assert(
+    checkboxFootprint > 0,
+    "Invalid Configuration: Checkbox dimensions combined with spacing gaps must be greater than 0",
+  );
 
-  constructor(gridSolver?: GridSolverStrategy) {
-    this.gridSolver = gridSolver ?? new DivisibleGridSolver();
-  }
+  const structuralMaxRows = Math.floor(
+    (availableGridHeight(config) + config.gridSpacing) / checkboxFootprint,
+  );
+  const structuralMaxCols = Math.floor(
+    (availableGridWidth(config) + config.gridSpacing) / checkboxFootprint,
+  );
 
-  public create(initialConfig: LayoutConfig): LayoutContext {
-    const computed = this.compute(initialConfig);
-    return Object.freeze({
-      config: Object.freeze({ ...initialConfig }),
-      computed: Object.freeze(computed),
-    });
-  }
+  const optimizedGrid = solve({
+    maxRows: structuralMaxRows,
+    maxCols: structuralMaxCols,
+    minDim: config.minGridDimension,
+    maxDim: config.maxGridDimension,
+    totalItemCount: config.totalItemCount,
+  });
 
-  public patch(currentContext: LayoutContext, updates: Partial<LayoutConfig>): LayoutContext {
-    const freshConfig = Object.freeze({
-      ...currentContext.config,
-      ...updates,
-    });
-    return Object.freeze({
-      config: freshConfig,
-      computed: Object.freeze(this.compute(freshConfig)),
-    });
-  }
+  const finalSlideHeight =
+    lengthWithGaps(optimizedGrid.rows, config.checkboxSize, config.gridSpacing) +
+    config.slidePadding.vertical * 2;
+  const finalSlideWidth =
+    lengthWithGaps(optimizedGrid.columns, config.checkboxSize, config.gridSpacing) +
+    config.slidePadding.horizontal * 2;
 
-  private compute(config: LayoutConfig): ComputedLayout {
-    const bounds = new ViewportBounds(config);
+  const nonZeroClampedSlideHeight = Math.max(1, finalSlideHeight);
+  const visibleCount = Math.ceil(config.viewportSize.height / nonZeroClampedSlideHeight);
+  const bufferCount = Math.ceil(visibleCount * config.loopBufferSizeRatio);
+  const totalCount = visibleCount + bufferCount;
 
-    const checkboxFootprint = config.checkboxSize + config.gridSpacing;
-    assert(
-      checkboxFootprint > 0,
-      "Invalid Configuration: Checkbox dimensions combined with spacing gaps must be greater than 0",
-    );
+  const totalContentRunwayHeight =
+    lengthWithGaps(totalCount, finalSlideHeight, config.slideSpacing) +
+    config.containerPadding.vertical * 2;
+  const cellsPerSlideTotal = optimizedGrid.rows * optimizedGrid.columns;
 
-    const structuralMaxRows = Math.floor(
-      (bounds.getAvailableGridHeight() + config.gridSpacing) / checkboxFootprint,
-    );
-    const structuralMaxCols = Math.floor(
-      (bounds.getAvailableGridWidth() + config.gridSpacing) / checkboxFootprint,
-    );
-
-    const optimizedGrid = this.gridSolver.solve({
-      maxRows: structuralMaxRows,
-      maxCols: structuralMaxCols,
-      minDim: config.minGridDimension,
-      maxDim: config.maxGridDimension,
-      totalItemCount: config.totalItemCount,
-    });
-
-    const totalVerticalPadding = config.slidePadding.vertical * 2;
-    const totalHorizontalPadding = config.slidePadding.horizontal * 2;
-
-    const finalSlideHeight =
-      bounds.calculateLengthWithGaps(optimizedGrid.rows, config.checkboxSize, config.gridSpacing) +
-      totalVerticalPadding;
-    const finalSlideWidth =
-      bounds.calculateLengthWithGaps(
-        optimizedGrid.columns,
-        config.checkboxSize,
-        config.gridSpacing,
-      ) + totalHorizontalPadding;
-
-    const nonZeroClampedSlideHeight = Math.max(1, finalSlideHeight);
-    const visibleCount = Math.ceil(config.viewportSize.height / nonZeroClampedSlideHeight);
-    const bufferCount = Math.ceil(visibleCount * config.loopBufferSizeRatio);
-    const totalCount = visibleCount + bufferCount;
-
-    const totalContentRunwayHeight =
-      bounds.calculateLengthWithGaps(totalCount, finalSlideHeight, config.slideSpacing) +
-      config.containerPadding.vertical * 2;
-    const cellsPerSlideTotal = optimizedGrid.rows * optimizedGrid.columns;
-
-    return {
-      slide: { width: finalSlideWidth, height: finalSlideHeight },
-      grid: optimizedGrid,
-      slideCount: {
-        visible: visibleCount,
-        buffer: bufferCount,
-        total: totalCount,
-      },
-      contentArea: {
-        width: finalSlideWidth,
-        height: totalContentRunwayHeight,
-      },
-      pagination: {
-        itemsPerSlide: cellsPerSlideTotal,
-        totalItems: config.totalItemCount,
-        totalPages: config.totalItemCount / cellsPerSlideTotal,
-      },
-    };
-  }
+  return {
+    slide: { width: finalSlideWidth, height: finalSlideHeight },
+    grid: optimizedGrid,
+    slideCount: {
+      visible: visibleCount,
+      total: totalCount,
+    },
+    contentArea: {
+      width: finalSlideWidth,
+      height: totalContentRunwayHeight,
+    },
+    pagination: {
+      itemsPerSlide: cellsPerSlideTotal,
+      totalItems: config.totalItemCount,
+      totalPages: config.totalItemCount / cellsPerSlideTotal,
+    },
+  };
 }

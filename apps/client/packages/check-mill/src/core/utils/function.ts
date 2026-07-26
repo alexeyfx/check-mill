@@ -72,3 +72,7 @@ export function debounce<T extends (...args: any[]) => void>(
 }
 
 export function noop(): void {}
+
+export function falsy(): boolean {
+  return false;
+}

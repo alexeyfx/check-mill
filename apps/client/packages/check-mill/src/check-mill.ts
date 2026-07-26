@@ -1,27 +1,44 @@
-import type { AppRef, AppSystemInstance, FrameSyncBuffer, Transport } from "./components";
-import { Phases, createAppRef, collectSystemLogic, createTransport } from "./components";
+import type { AppRef, AppSystemInstance, SimulationState, Transport } from "./components";
 import {
-  DisposableStore,
-  RenderLoop,
-  event,
-  createPhase,
-  createMergedRunner,
-  debounce,
-  base64ToUint8Array,
-  type Disposable,
+  adoptViewPlan,
+  AppDirtyFlags,
+  collectSystemLogic,
+  createAppRef,
+  createTransport,
+  isIdle,
+  markDirty,
+  patchViewPlan,
+  Phases,
+  planRequiresRebuild,
+  rebuildForViewPlan,
+  sameViewport,
+} from "./components";
+import {
   assert,
+  base64ToUint8Array,
+  createMergedRunner,
+  createPhase,
+  debounce,
+  DisposableStore,
+  event,
+  noop,
+  RenderLoop,
+  type Disposable,
+  type RenderLoopType,
 } from "./core";
 import { RenderSystem, ScrollSystem, SyncSystem, ToggleSystem, UpdateSystem } from "./systems";
 
+/** Simulation steps per second. */
+const TARGET_FPS = 60;
+
+/** Quiet period before a viewport resize is acted on. */
+const RESIZE_DEBOUNCE_MS = 150;
+
 export interface CheckMillConfig {
-  /**
-   * The root HTML element for viewport calculations
-   */
+  /** The root HTML element for viewport calculations. */
   readonly root: HTMLElement;
 
-  /**
-   * The backend socket target endpoint. Required if using the default transport implementation.
-   */
+  /** The backend socket target endpoint. Required if using the default transport implementation. */
   readonly endpointUrl?: string;
 
   /**
@@ -32,31 +49,85 @@ export interface CheckMillConfig {
 }
 
 export interface CheckMillType {
-  destroy: Disposable;
+  /** Tears down the loop, the systems, the socket and every listener. Idempotent. */
+  readonly destroy: Disposable;
 }
 
 export function CheckMill(config: CheckMillConfig): Promise<CheckMillType> {
-  const { root, endpointUrl, transport: customTransport } = config;
   const disposables = new DisposableStore();
-
-  let resolvedTransport: Transport;
-
-  if (customTransport) {
-    resolvedTransport = customTransport;
-  } else {
-    assert(
-      endpointUrl,
-      "[CheckMill] Initialization failed: Either 'transport' or 'endpointUrl' must be provided.",
-    );
-    resolvedTransport = createTransport(endpointUrl);
-  }
-
-  const appRef = createAppRef(root, resolvedTransport);
+  const appRef = createAppRef(config.root, resolveTransport(config));
 
   disposables.push(
     appRef.host.transport.init(),
-    bindTransportToSyncBuffer(appRef.host.transport, appRef.state.syncBuffer),
+    bindTransportToSyncBuffer(appRef.host.transport, appRef.state),
   );
+
+  let runtime = startRuntime(appRef);
+  let destroyed = false;
+
+  const applyResize = (rect: DOMRect): void => {
+    if (destroyed) return;
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const previous = appRef.state.layout.current;
+    if (sameViewport(previous, rect.width, rect.height)) return;
+
+    const next = patchViewPlan(previous, {
+      viewportSize: { width: rect.width, height: rect.height },
+    });
+
+    if (!planRequiresRebuild(previous, next)) {
+      adoptViewPlan(appRef, next);
+      return;
+    }
+
+    runtime();
+    rebuildForViewPlan(appRef, next);
+    runtime = startRuntime(appRef);
+  };
+
+  disposables.push(
+    bindVisibilityToLoop(appRef),
+    appRef.state.layout.viewport.init(),
+    appRef.state.layout.viewport.resized.register(debounce(applyResize, RESIZE_DEBOUNCE_MS)),
+  );
+
+  const destroy = (): void => {
+    destroyed = true;
+    runtime();
+    disposables.flushAll();
+  };
+
+  return Promise.resolve({ destroy });
+}
+
+function resolveTransport({ transport, endpointUrl }: CheckMillConfig): Transport {
+  if (transport) return transport;
+
+  assert(
+    endpointUrl,
+    "[CheckMill] Initialization failed: Either 'transport' or 'endpointUrl' must be provided.",
+  );
+
+  return createTransport(endpointUrl);
+}
+
+/**
+ * Brings up the systems and the render loop over the current slide registry.
+ *
+ * Everything here is rebuilt on resize, so nothing outside this function may
+ * hold onto a system, the pipeline or the loop.
+ */
+function startRuntime(appRef: AppRef): Disposable {
+  const disposables = new DisposableStore();
+
+  let loop: RenderLoopType | null = null;
+
+  disposables.push(() => {
+    loop?.stop();
+    appRef.engine.loop = null;
+    appRef.state.frame.wake = noop;
+  });
 
   const systems: AppSystemInstance[] = [
     ToggleSystem(appRef),
@@ -82,67 +153,79 @@ export function CheckMill(config: CheckMillConfig): Promise<CheckMillType> {
     createPhase(Phases.Cleanup, pipeline[Phases.Cleanup]),
   ]);
 
-  setupStaticListeners(appRef, disposables);
+  const nothingLeftToDo = (): boolean =>
+    isIdle(appRef.state.frame) && !systems.some((system) => system.isBusy());
 
-  appRef.engine.loop = RenderLoop(appRef.host.window, readPass, writePass, 60 /* fps */);
-  appRef.engine.loop.start();
+  loop = RenderLoop(appRef.host.window, readPass, writePass, TARGET_FPS, nothingLeftToDo);
 
-  const destroy = (): void => {
-    appRef.engine.loop?.stop();
-    disposables.flushAll();
-  };
+  appRef.engine.loop = loop;
+  appRef.state.frame.wake = loop.start;
 
-  return Promise.resolve({ destroy });
+  markDirty(
+    appRef.state.frame,
+    AppDirtyFlags.Motion | AppDirtyFlags.Board | AppDirtyFlags.Layout | AppDirtyFlags.Hydration,
+  );
+
+  loop.start();
+
+  return () => disposables.flushAll();
 }
 
-function setupStaticListeners(appRef: AppRef, disposables: DisposableStore): void {
-  const queueResizeUpdate = (rect: DOMRect) => {
-    appRef.state.syncBuffer.inbound.resize = rect;
-  };
-
-  const onVisibilityChange = (): void => {
+/**
+ * Parks the loop while the tab is in the background, and asks for a frame on
+ * the way back.
+ */
+function bindVisibilityToLoop(appRef: AppRef): Disposable {
+  return event(appRef.host.document, "visibilitychange", () => {
     if (appRef.host.document.hidden) {
       appRef.engine.loop?.stop();
-    } else {
-      appRef.engine.loop?.start();
+      return;
     }
-  };
 
-  disposables.push(
-    appRef.state.layout.viewport.init(),
-    appRef.state.layout.viewport.resized.register(debounce(queueResizeUpdate, 150)),
-    event(appRef.host.document, "visibilitychange", onVisibilityChange),
-  );
+    markDirty(appRef.state.frame, AppDirtyFlags.Board | AppDirtyFlags.Hydration);
+  });
 }
 
-function bindTransportToSyncBuffer(transport: Transport, syncBuffer: FrameSyncBuffer): Disposable {
-  const { inbound } = syncBuffer;
+/**
+ * Funnels inbound server messages into the sync buffer.
+ */
+function bindTransportToSyncBuffer(
+  transport: Transport,
+  state: Pick<SimulationState, "syncBuffer" | "frame">,
+): Disposable {
+  const { inbound } = state.syncBuffer;
   const disposables = new DisposableStore();
 
-  const bindings = [
+  const wake = (): void => state.frame.wake();
+
+  disposables.push(
     transport.patchBatch.register(({ patches }) => {
       inbound.patches.push(...patches);
+      wake();
     }),
 
     transport.windowSnapshot.register((snapshot) => {
       inbound.windowSnapshots.push(snapshot);
+      wake();
     }),
 
     transport.snapshotBegin.register(({ chunks }) => {
       inbound.stream.expectedChunks = chunks;
       inbound.stream.chunks.length = 0;
       inbound.stream.isDone = false;
+      wake();
     }),
 
     transport.snapshotChunk.register(({ b64 }) => {
       inbound.stream.chunks.push(base64ToUint8Array(b64));
+      wake();
     }),
 
     transport.snapshotDone.register(() => {
       inbound.stream.isDone = true;
+      wake();
     }),
-  ];
+  );
 
-  disposables.push(...bindings);
   return () => disposables.flushAll();
 }

@@ -47,6 +47,9 @@ export interface RenderLoopType {
  * @param update - Function to perform fixed-step logic (physics, AI, game rules).
  * @param render - Function to perform variable-step rendering (drawing, DOM updates).
  * @param fps - The target updates-per-second for the simulation (default: 60).
+ * @param isIdle - Asked at the end of every frame whether there is anything
+ *   left to do. When it answers true the loop parks itself instead of asking
+ *   for another frame, and only `start` brings it back.
  * @returns A RenderLoop instance.
  *
  * @see [Game Loop Pattern](https://gameprogrammingpatterns.com/game-loop.html)
@@ -57,6 +60,7 @@ export function RenderLoop(
   update: (params: LoopParams) => void,
   render: (params: LoopParams) => void,
   fps: number = 60,
+  isIdle?: () => boolean,
 ): RenderLoopType {
   assert(fps > 0, `Invalid FPS value: ${fps}.`);
 
@@ -165,6 +169,11 @@ export function RenderLoop(
       updatesCount++;
     }
 
+    if (updatesCount === 0) {
+      params.t = simulationTime;
+      update(params);
+    }
+
     const alpha = accumulator / fixedTimeStep;
 
     params.t = simulationTime;
@@ -172,7 +181,12 @@ export function RenderLoop(
 
     render(params);
 
-    animationId = ownerWindow.requestAnimationFrame(tick);
+    if (isIdle?.()) {
+      animationId = null;
+      return;
+    }
+
+    animationId =  ownerWindow.requestAnimationFrame(tick);
   }
 
   return {

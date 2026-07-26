@@ -15,6 +15,10 @@
 			"dependsOn": ["^package"],
 			"cache": false,
 			"persistent": true
+		},
+		"test": {
+			"outputs": [],
+			"cache": true
 		}
 	}
 }

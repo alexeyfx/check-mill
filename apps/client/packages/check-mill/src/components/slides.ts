@@ -6,7 +6,6 @@ export interface Slide {
   virtualIndex: number;
   pageIndex: number;
   viewportOffset: number;
-  isDirty: boolean;
 }
 
 export type SlidesCollectionType = Readonly<Slide[]>;
@@ -24,7 +23,6 @@ export function createSlide(
     virtualIndex,
     pageIndex,
     viewportOffset,
-    isDirty: false,
   };
 }
 

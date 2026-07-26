@@ -1,5 +1,5 @@
 import { px } from "../core";
-import { LayoutContext } from "./layout";
+import type { ViewPlan } from "./view-plan";
 
 const enum CSSVariables {
   CHECKBOX_SIZE = "--checkbox-size",
@@ -7,11 +7,15 @@ const enum CSSVariables {
   SLIDE_WIDTH = "--slide-width",
   SLIDE_HEIGHT = "--slide-height",
   SLIDE_PADDING = "--slide-padding",
+  SLIDE_ORIGIN_X = "--slide-origin-x",
   CONTAINER_GAP = "--container-gap",
   CONTAINER_PADDING = "--container-padding",
 }
 
-export function writeVariables(root: HTMLElement, layout: Readonly<LayoutContext>): void {
+/**
+ * Publishes the plan's geometry as custom properties.
+ */
+export function writeVariables(root: HTMLElement, layout: ViewPlan): void {
   const { style } = root;
 
   root.removeAttribute("style");
@@ -24,6 +28,7 @@ export function writeVariables(root: HTMLElement, layout: Readonly<LayoutContext
   );
   style.setProperty(CSSVariables.SLIDE_WIDTH, px(layout.computed.slide.width));
   style.setProperty(CSSVariables.SLIDE_HEIGHT, px(layout.computed.slide.height));
+  style.setProperty(CSSVariables.SLIDE_ORIGIN_X, px(layout.derived.slideOriginX));
   style.setProperty(CSSVariables.CONTAINER_GAP, px(layout.config.slideSpacing));
   style.setProperty(
     CSSVariables.CONTAINER_PADDING,

@@ -1,41 +1,62 @@
-import type { AppRef, AppSystemInstance, MotionType } from "../components";
-import { Phases, TrackRecycler } from "../components";
-import { VisibilityTracker } from "../components";
-import type { LoopParams } from "../core";
+import type { AppSystemInstance, SystemContext } from "../components";
+import {
+  AppDirtyFlags,
+  Phases,
+  advanceTrack,
+  executeIntersectionPass,
+  isDirty,
+  markDirty,
+} from "../components";
+import { noop, falsy } from "../core";
 
-const FRICTION = 0.92;
+/** Anything that can move a slide relative to the viewport. */
+const GEOMETRY_CHANGED = AppDirtyFlags.Motion | AppDirtyFlags.Layout;
 
-export function UpdateSystem(appRef: AppRef): AppSystemInstance {
+/** Advances the simulation: track recycling and visibility. */
+export type UpdateContext = SystemContext<never, "layout" | "motion" | "frame">;
+
+export function UpdateSystem(appRef: UpdateContext): AppSystemInstance {
   const { state } = appRef;
 
-  const trackRecycler = new TrackRecycler();
-  const visibilityTracker = new VisibilityTracker(state.motion.slides);
+  function recycleTrack(): void {
+    const previous = state.motion.recycler;
 
-  return {
-    init: () => () => visibilityTracker.reset(),
-    logic: {
-      [Phases.Update]: [
-        (params) => processInertia(state.motion.track, params),
-        () => trackRecycler.update(state.motion.track, state.layout.current, state.motion.slides),
-        () =>
-          visibilityTracker.executeIntersectionPass(
-            state.motion.track,
-            state.layout.current.computed,
-          ),
-      ],
-    },
-  };
-}
+    state.motion.recycler = advanceTrack(
+      previous,
+      state.motion.track,
+      state.layout.current,
+      state.motion.slides,
+    );
 
-function processInertia(motion: MotionType, params: LoopParams): void {
-  motion.velocity *= Math.pow(FRICTION, params.dt / 16.67);
-
-  if (Math.abs(motion.velocity) < 1) {
-    motion.velocity = 0;
+    if (state.motion.recycler !== previous) {
+      markDirty(state.frame, AppDirtyFlags.Hydration);
+    }
   }
 
-  const displacement = motion.velocity * (params.dt / 1000);
+  function markVisibility(): void {
+    const changed = executeIntersectionPass(
+      state.motion.visibility,
+      state.motion.track,
+      state.layout.current,
+    );
 
-  motion.previous = motion.current;
-  motion.current += displacement;
+    if (changed) {
+      markDirty(state.frame, AppDirtyFlags.Hydration);
+    }
+  }
+
+  function advanceGeometry(): void {
+    if (!isDirty(state.frame, GEOMETRY_CHANGED)) return;
+
+    recycleTrack();
+    markVisibility();
+  }
+
+  return {
+    init: () => noop,
+    isBusy: falsy,
+    logic: {
+      [Phases.Update]: [advanceGeometry],
+    },
+  };
 }

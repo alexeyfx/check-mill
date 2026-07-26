@@ -1,90 +1,132 @@
-import { AppRef, AppSystemInstance, Phases } from "../components";
-import { Disposable, DisposableStore } from "../core";
+import type { AppSystemInstance, SystemContext } from "../components";
+import { AppDirtyFlags, Phases, isDirty, markDirty, topmostRetained } from "../components";
+import type { Disposable, LoopParams } from "../core";
+import { concatUint8Arrays, gunzipInBrowser, throttle } from "../core";
 
-export function SyncSystem(_appRef: AppRef): AppSystemInstance {
-  // const { itemsPerSlide } = state.layout.current.computed.pagination;
+/** Applies inbound server state and reports where the user is looking. */
+/** Anything that can put a different page at the top of the viewport. */
+const CURSOR_MAY_HAVE_MOVED =
+  AppDirtyFlags.Motion | AppDirtyFlags.Layout | AppDirtyFlags.Hydration;
 
-  // let patchQueue: [number, number][] = [];
-  // let chunkBuffer: Uint8Array[] = [];
-  // let lastCursor = -1;
+export type SyncContext = SystemContext<
+  "transport",
+  "layout" | "motion" | "selectionBoard" | "syncBuffer" | "frame"
+>;
+
+export function SyncSystem(appRef: SyncContext): AppSystemInstance {
+  const { state } = appRef;
+
+  let inflating = false;
+  let disposed = false;
+
+  /** Where the viewport is, and the last position the server was told about. */
+  let pendingCursor = -1;
+  let sentCursor = -1;
+
+  /**
+   * The send is throttled to match the server's own cursor flush, so it will
+   * often decline. `pendingCursor` outliving `sentCursor` is what keeps the
+   * loop awake until one gets through — parking on an unsent cursor would
+   * leave the server subscribing us to the wrong region of the grid.
+   */
+  const flushCursor = throttle(() => {
+    sentCursor = pendingCursor;
+    appRef.host.transport.sendCursor(pendingCursor);
+  }, 300);
 
   function init(): Disposable {
-    const disposables = new DisposableStore();
+    disposed = false;
 
-    // disposables.push(
-    //   gateway.snapshotBegin.register(() => (chunkBuffer = [])),
-    //   gateway.snapshotChunk.register(({ b64 }) => chunkBuffer.push(base64ToUint8Array(b64))),
-    //   gateway.snapshotDone.register(onSnapshotComplete),
-    //   gateway.patchBatch.register(({ patches }) => patchQueue.push(...patches)),
-    //   gateway.windowSnapshot.register(onWindowSnapshot),
-    // );
-
-    return () => disposables.flushAll();
+    return () => {
+      disposed = true;
+      pendingCursor = -1;
+      sentCursor = -1;
+    };
   }
 
-  // function consumePatches(app: AppRef): void {
-  //   if (patchQueue.length === 0) return;
+  function consumePatches(_params: LoopParams): void {
+    const { patches } = state.syncBuffer.inbound;
 
-  //   const affectedPages = new Set<number>();
+    if (inflating || patches.length === 0) return;
 
-  //   for (const [index, value] of patchQueue) {
-  //     board.setAt(index, Boolean(value));
-  //     affectedPages.add(Math.floor(index / itemsPerSlide));
-  //   }
+    for (const [index, value] of patches) {
+      state.selectionBoard.setAt(index, value !== 0);
+    }
 
-  //   for (const slide of view.slides) {
-  //     if (affectedPages.has(slide.pageIndex)) {
-  //       slide.isDirty = true;
-  //     }
-  //   }
+    patches.length = 0;
+    markDirty(state.frame, AppDirtyFlags.Board);
+  }
 
-  //   markForCheck(app);
-  //   patchQueue = [];
-  // }
+  function consumeWindowSnapshots(_params: LoopParams): void {
+    const { windowSnapshots } = state.syncBuffer.inbound;
 
-  // function onWindowSnapshot(snapshot: WindowSnapshot): void {
-  //   board.patchFromBase64(snapshot.pos, snapshot.bits_b64, { bitOrder: "msb0" });
+    if (inflating || windowSnapshots.length === 0) return;
 
-  //   for (const slide of view.slidesVisibilityTracker.getVisibleSlides()) {
-  //     slide.isDirty = true;
-  //   }
+    for (const snapshot of windowSnapshots) {
+      state.selectionBoard.patchFromBase64(snapshot.pos, snapshot.bits_b64, { bitOrder: "msb0" });
+    }
 
-  //   markForCheck(appRef.state);
-  // }
+    windowSnapshots.length = 0;
+    markDirty(state.frame, AppDirtyFlags.Board);
+  }
 
-  // async function onSnapshotComplete(): Promise<void> {
-  //   const gzBytes = concatUint8Arrays(chunkBuffer);
-  //   chunkBuffer = [];
+  function consumeSnapshotStream(_params: LoopParams): void {
+    const { stream } = state.syncBuffer.inbound;
 
-  //   try {
-  //     const rawBytes = await gunzipInBrowser(gzBytes);
-  //     board.copyFromBytesWithOrder(rawBytes, { bitOrder: "msb0" });
+    if (inflating || !stream.isDone) return;
+    if (stream.chunks.length !== stream.expectedChunks) return;
 
-  //     for (const slide of view.slides) {
-  //       slide.isDirty = true;
-  //     }
+    const compressed = concatUint8Arrays(stream.chunks);
 
-  //     markForCheck(appRef.state);
-  //   } catch (error) {}
-  // }
+    stream.chunks.length = 0;
+    stream.expectedChunks = 0;
+    stream.isDone = false;
+    inflating = true;
 
-  // function syncCursor(app: AppRef): void {
-  //   const firstSlide = view.slidesVisibilityTracker.getFirstVisibleSlide();
-  //   if (!firstSlide) return;
+    gunzipInBrowser(compressed)
+      .then((raw) => {
+        if (disposed) return;
 
-  //   const cursor = firstSlide.pageIndex * itemsPerSlide;
+        state.selectionBoard.copyFromBytesWithOrder(raw, { bitOrder: "msb0" });
+        markDirty(state.frame, AppDirtyFlags.Board);
+      })
+      .catch(() => undefined)
+      .then(() =>  inflating = false);
+  }
 
-  //   if (cursor !== lastCursor) {
-  //     lastCursor = cursor;
-  //     app.gateway.sendCursor(cursor);
-  //   }
-  // }
+  function syncCursor(_params: LoopParams): void {
+    // Re-locating the anchor walks the registry, so only bother when something
+    // could actually have moved it.
+    if (isDirty(state.frame, CURSOR_MAY_HAVE_MOVED)) {
+      const plan = state.layout.current;
+      const anchor = topmostRetained(state.motion.visibility, state.motion.track, plan);
+
+      if (anchor) {
+        pendingCursor = anchor.pageIndex * plan.computed.pagination.itemsPerSlide;
+      }
+    }
+
+    if (pendingCursor !== sentCursor) {
+      flushCursor();
+    }
+  }
+
+  const { inbound } = state.syncBuffer;
 
   return {
     init,
+    isBusy: () =>
+      inflating ||
+      pendingCursor !== sentCursor ||
+      inbound.patches.length > 0 ||
+      inbound.windowSnapshots.length > 0,
     logic: {
-      [Phases.IO]: [],
-      // [Phases.IO]: [consumePatches, throttle(syncCursor, 300)],
+      [Phases.IO]: [
+        consumeSnapshotStream,
+        consumeWindowSnapshots,
+        consumePatches,
+        syncCursor,
+      ],
     },
   };
 }
