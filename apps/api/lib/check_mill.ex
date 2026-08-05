@@ -1,9 +1,9 @@
 defmodule CheckMill do
   @moduledoc """
-  CheckMill keeps the contexts that define your domain
-  and business logic.
+  A shared grid of 1,048,576 checkboxes, live across every connected browser.
 
-  Contexts are also responsible for managing your data, regardless
-  if it comes from the database, an external API or others.
+  The board itself lives in `CheckMill.GridStore`. `CheckMillWeb.GridChannel`
+  is the only route in or out of it, `CheckMill.SegmentBroadcaster` fans changes
+  back out, and `CheckMill.Wire` defines the binary protocol both sides speak.
   """
 end
